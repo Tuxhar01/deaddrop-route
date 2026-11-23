@@ -1,14 +1,28 @@
 import { Hono } from 'hono';
-import { context, reddit } from '@devvit/web/server';
+import { context, redis } from '@devvit/web/server';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { formatUtcDate, getDailyMap, getUtcDayIndex } from '../../shared/dates.ts';
 import type { DailyResponse, GameMap } from '../../shared/types';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
-import { getUserDailyStats } from '../services/stats.ts';
+import { getUserDailyStats, type RedisClientLike } from '../services/stats.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { getCanonicalUserId, getDisplayUsername } from '../auth.ts';
 
-export const daily = new Hono();
+export type DailyEnv = {
+  Bindings: {
+    redisClient?: RedisClientLike;
+  };
+};
 
-export const getDailyPayload = async (userIdOverride?: string): Promise<DailyResponse> => {
+export const daily = new Hono<DailyEnv>();
+
+export type DailyOptions = {
+  redisClient?: RedisClientLike;
+};
+
+export const getDailyPayload = async (
+  options: DailyOptions = {}
+): Promise<DailyResponse> => {
   const dayIndex = getUtcDayIndex();
   const date = formatUtcDate();
   const rawMap = getDailyMap(dayIndex);
@@ -23,41 +37,26 @@ export const getDailyPayload = async (userIdOverride?: string): Promise<DailyRes
     ...(rawMap.initialBudget !== undefined ? { initialBudget: rawMap.initialBudget } : {}),
   };
 
-  let userId: string | undefined = userIdOverride;
-  let username: string | undefined = userIdOverride;
+  const userId = getCanonicalUserId();
+  const username = await getDisplayUsername();
+
   let postId: string | undefined;
-
-  if (!userId) {
-    try {
-      userId = context.userId ?? context.username;
-      username = context.username;
-      if (context.postId) {
-        postId = context.postId;
-      }
-    } catch {
-      // Headless test or outside server request
+  try {
+    if (typeof context.postId === 'string' && context.postId.trim().length > 0) {
+      postId = context.postId.trim();
     }
+  } catch {
+    // Outside server request
   }
 
-  if (!userId) {
-    try {
-      const currentUsername = await reddit.getCurrentUsername();
-      if (currentUsername) {
-        userId = currentUsername;
-        username = currentUsername;
-      }
-    } catch (err) {
-      console.warn('[Daily API] Unable to fetch current username from Reddit:', err);
-    }
-  }
-
+  const client = options.redisClient ?? redis;
   const {
     streak,
     bestMoves,
     completions,
     attempt,
     alreadyCompleted,
-  } = await getUserDailyStats(userId, dayIndex);
+  } = await getUserDailyStats(userId, dayIndex, client);
 
   const response: DailyResponse = {
     dayIndex,
@@ -77,7 +76,7 @@ export const getDailyPayload = async (userIdOverride?: string): Promise<DailyRes
 };
 
 daily.get('/', async (c) => {
-  const headerUserId = c.req.header('x-user-id');
-  const payload = await getDailyPayload(headerUserId);
+  const redisClient = c.env?.redisClient ?? redis;
+  const payload = await getDailyPayload({ redisClient });
   return c.json<DailyResponse>(payload);
 });
