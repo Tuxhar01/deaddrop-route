@@ -1,0 +1,285 @@
+/// <reference types="node" />
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { getEndCardViewModel, renderStarGlyphs } from './endCardModel.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { TRAFFIC_THRESHOLD } from '../../shared/constants.ts';
+
+void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)', () => {
+  void it('TRAFFIC_THRESHOLD is strictly 5 per specification', () => {
+    assert.strictEqual(TRAFFIC_THRESHOLD, 5);
+  });
+
+  void it('renders "BE THE FIRST TO ROUTE" when completions < TRAFFIC_THRESHOLD', () => {
+    const testCases = [
+      { completions: 0, label: '0 completions' },
+      { completions: 1, label: '1 completion' },
+      { completions: 2, label: '2 completions' },
+      { completions: 3, label: '3 completions' },
+      { completions: 4, label: '4 completions' },
+      { completions: undefined, label: 'undefined completions (default 0)' },
+    ];
+
+    for (const { completions, label } of testCases) {
+      const model = getEndCardViewModel({
+        won: true,
+        stars: 3,
+        streak: 1,
+        completions,
+      });
+
+      assert.strictEqual(
+        model.isBelowTrafficThreshold,
+        true,
+        `Expected isBelowTrafficThreshold=true for ${label}`
+      );
+      assert.strictEqual(
+        model.trafficDisplayText,
+        'BE THE FIRST TO ROUTE',
+        `Expected "BE THE FIRST TO ROUTE" for ${label}`
+      );
+      assert.strictEqual(
+        model.courierCountText,
+        null,
+        `Expected null courierCountText for below-threshold ${label}`
+      );
+    }
+  });
+
+  void it('renders real courier count when completions >= TRAFFIC_THRESHOLD (no synthetic data)', () => {
+    const testCases = [
+      { completions: 5, expectedText: '5 COURIERS DISPATCHED' },
+      { completions: 6, expectedText: '6 COURIERS DISPATCHED' },
+      { completions: 25, expectedText: '25 COURIERS DISPATCHED' },
+      { completions: 100, expectedText: '100 COURIERS DISPATCHED' },
+    ];
+
+    for (const { completions, expectedText } of testCases) {
+      const model = getEndCardViewModel({
+        won: true,
+        stars: 3,
+        streak: 3,
+        completions,
+      });
+
+      assert.strictEqual(
+        model.isBelowTrafficThreshold,
+        false,
+        `Expected isBelowTrafficThreshold=false for ${completions} completions`
+      );
+      assert.strictEqual(
+        model.courierCountText,
+        expectedText,
+        `Expected "${expectedText}" for ${completions} completions`
+      );
+    }
+  });
+
+  void it('renders correct result heading for win vs loss', () => {
+    const winModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 2,
+      completions: 10,
+    });
+    assert.strictEqual(winModel.resultHeading, 'ROUTE DELIVERED');
+    assert.strictEqual(winModel.isWon, true);
+
+    const lossModel = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 0,
+      completions: 10,
+    });
+    assert.strictEqual(lossModel.resultHeading, 'OUT OF MOVES');
+    assert.strictEqual(lossModel.isWon, false);
+  });
+
+  void it('renders star glyphs accurately for won runs and empty for lost runs', () => {
+    assert.strictEqual(renderStarGlyphs(0, false), '☆☆☆');
+    assert.strictEqual(renderStarGlyphs(0, true), '☆☆☆');
+    assert.strictEqual(renderStarGlyphs(1, true), '★☆☆');
+    assert.strictEqual(renderStarGlyphs(2, true), '★★☆');
+    assert.strictEqual(renderStarGlyphs(3, true), '★★★');
+
+    // Any lost run displays empty stars
+    assert.strictEqual(renderStarGlyphs(3, false), '☆☆☆');
+    assert.strictEqual(renderStarGlyphs(2, false), '☆☆☆');
+    assert.strictEqual(renderStarGlyphs(1, false), '☆☆☆');
+  });
+
+  void it('produces correct resultHeading and starsGlyphs for a losing view model (won: false, stars: 0)', () => {
+    const lossModel = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 0,
+      completions: 10,
+    });
+    assert.strictEqual(lossModel.resultHeading, 'OUT OF MOVES');
+    assert.strictEqual(lossModel.starsGlyphs, '☆☆☆');
+    assert.strictEqual(lossModel.isWon, false);
+  });
+
+  void it('formats streak text with singular/plural grammar', () => {
+    const streakOne = getEndCardViewModel({
+      won: true,
+      stars: 2,
+      streak: 1,
+      completions: 0,
+    });
+    assert.strictEqual(streakOne.streakText, 'STREAK: 1 DAY');
+
+    const streakZero = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 0,
+      completions: 0,
+    });
+    assert.strictEqual(streakZero.streakText, 'STREAK: 0 DAYS');
+
+    const streakMultiple = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 7,
+      completions: 0,
+    });
+    assert.strictEqual(streakMultiple.streakText, 'STREAK: 7 DAYS');
+  });
+
+  void it('includes "Back tomorrow for your next drop." PRD footer text', () => {
+    const model = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+      completions: 5,
+    });
+    assert.strictEqual(model.backTomorrowText, 'Back tomorrow for your next drop.');
+  });
+
+  void it('shows "ALREADY DISPATCHED" with no stars when attempt is null or alreadyDispatched is true', () => {
+    // Case 1: attempt is null
+    const modelAttemptNull = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 3,
+      completions: 2,
+      attempt: null,
+    });
+    assert.strictEqual(modelAttemptNull.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(modelAttemptNull.starsGlyphs, '');
+
+    // Case 2: alreadyDispatched is true
+    const modelAlreadyDispatched = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 3,
+      completions: 2,
+      alreadyDispatched: true,
+    });
+    assert.strictEqual(modelAlreadyDispatched.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(modelAlreadyDispatched.starsGlyphs, '');
+  });
+
+  void it('validates attempt record shape before rendering; shows "ALREADY DISPATCHED" with no stars on invalid shape', () => {
+    // Malformed attempt (invalid outcome or invalid stars)
+    const invalidAttemptModel = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 2,
+      attempt: { outcome: 'corrupted', movesUsed: -5, stars: 99 },
+    });
+    assert.strictEqual(invalidAttemptModel.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(invalidAttemptModel.starsGlyphs, '');
+
+    // Loss with non-zero stars is invalid
+    const invalidLossModel = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 2,
+      attempt: { outcome: 'lost', movesUsed: 15, stars: 3, deliveredCount: 1 },
+    });
+    assert.strictEqual(invalidLossModel.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(invalidLossModel.starsGlyphs, '');
+  });
+
+  void it('renders stored attempt correctly when valid (win or loss)', () => {
+    // Valid win attempt
+    const winModel = getEndCardViewModel({
+      won: false, // props fallback overridden by valid attempt
+      stars: 0,
+      streak: 4,
+      attempt: { outcome: 'won', movesUsed: 14, stars: 3, deliveredCount: 3 },
+    });
+    assert.strictEqual(winModel.resultHeading, 'ROUTE DELIVERED');
+    assert.strictEqual(winModel.starsGlyphs, '★★★');
+    assert.strictEqual(winModel.isWon, true);
+
+    // Valid loss attempt
+    const lossModel = getEndCardViewModel({
+      won: true, // props fallback overridden by valid attempt
+      stars: 3,
+      streak: 4,
+      attempt: { outcome: 'lost', movesUsed: 22, stars: 0, deliveredCount: 1 },
+    });
+    assert.strictEqual(lossModel.resultHeading, 'OUT OF MOVES');
+    assert.strictEqual(lossModel.starsGlyphs, '☆☆☆');
+    assert.strictEqual(lossModel.isWon, false);
+  });
+
+  void it('ALREADY DISPATCHED card has no share button', () => {
+    // Attempt is null
+    const modelNull = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 2,
+      attempt: null,
+    });
+    assert.strictEqual(modelNull.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(modelNull.showShareButton, false, 'Null attempt must not show share button');
+
+    // alreadyDispatched is true
+    const modelAlreadyDispatched = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 2,
+      alreadyDispatched: true,
+    });
+    assert.strictEqual(modelAlreadyDispatched.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(modelAlreadyDispatched.showShareButton, false, 'alreadyDispatched must not show share button');
+
+    // Corrupted / malformed attempt
+    const modelMalformed = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 2,
+      attempt: { outcome: 'corrupted' },
+    });
+    assert.strictEqual(modelMalformed.resultHeading, 'ALREADY DISPATCHED');
+    assert.strictEqual(modelMalformed.showShareButton, false, 'Malformed attempt must not show share button');
+  });
+
+  void it('Valid stored win card has a share button', () => {
+    const winModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 3,
+      movesUsed: 13,
+      attempt: { outcome: 'won', movesUsed: 13, stars: 3, deliveredCount: 3 },
+    });
+    assert.strictEqual(winModel.resultHeading, 'ROUTE DELIVERED');
+    assert.strictEqual(winModel.showShareButton, true, 'Valid win card must show share button');
+  });
+
+  void it('Valid stored loss card has a share button', () => {
+    const lossModel = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 0,
+      movesUsed: 20,
+      attempt: { outcome: 'lost', movesUsed: 20, stars: 0, deliveredCount: 1 },
+    });
+    assert.strictEqual(lossModel.resultHeading, 'OUT OF MOVES');
+    assert.strictEqual(lossModel.showShareButton, true, 'Valid loss card must show share button');
+  });
+});

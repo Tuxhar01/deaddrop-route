@@ -1,0 +1,1307 @@
+[
+  {
+    "id": "sector-01-midtown",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "relay",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road",
+        "block"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "congested",
+        "road",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 4,
+        "y": 4
+      },
+      {
+        "x": 2,
+        "y": 6
+      }
+    ],
+    "par": 15
+  },
+  {
+    "id": "sector-02-harbor",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "congested",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "relay",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "block",
+        "block",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 5,
+        "y": 1
+      },
+      {
+        "x": 2,
+        "y": 3
+      },
+      {
+        "x": 0,
+        "y": 5
+      }
+    ],
+    "par": 17
+  },
+  {
+    "id": "sector-03-railyards",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "congested",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "relay",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "block",
+        "road",
+        "congested",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 5,
+        "y": 6
+      }
+    ],
+    "par": 13
+  },
+  {
+    "id": "sector-04-neon-quarter",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ],
+      [
+        "congested",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "road",
+        "block",
+        "relay",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 4,
+        "y": 1
+      },
+      {
+        "x": 0,
+        "y": 4
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 20
+  },
+  {
+    "id": "sector-05-warehouse-row",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "congested",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "block"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 0,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 19
+  },
+  {
+    "id": "sector-06-canal-crossing",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "drop"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "relay",
+        "road",
+        "road",
+        "block",
+        "road",
+        "congested",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "block",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 6,
+        "y": 0
+      },
+      {
+        "x": 0,
+        "y": 4
+      },
+      {
+        "x": 5,
+        "y": 5
+      }
+    ],
+    "par": 20
+  },
+  {
+    "id": "sector-07-financial-core",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "road",
+        "drop"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "congested",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 6,
+        "y": 1
+      },
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 19
+  },
+  {
+    "id": "sector-08-substation",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "road",
+        "congested",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 0,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 12
+  },
+  {
+    "id": "sector-09-outer-ring",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "congested",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 5,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 19
+  },
+  {
+    "id": "sector-10-tech-corridor",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "congested",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "drop",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "drop",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 5
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 13
+  },
+  {
+    "id": "sector-11-chinatown",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "congested",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 13
+  },
+  {
+    "id": "sector-12-metro-center",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "congested",
+        "block",
+        "road",
+        "block",
+        "road",
+        "drop"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "block",
+        "road",
+        "relay",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 6,
+        "y": 1
+      },
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 6
+      }
+    ],
+    "par": 21
+  },
+  {
+    "id": "sector-13-skyline",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "road",
+        "congested",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "relay",
+        "road",
+        "road",
+        "block",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 5,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 5,
+        "y": 5
+      }
+    ],
+    "par": 17
+  },
+  {
+    "id": "sector-14-riverside",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "congested",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "drop",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "road",
+        "block",
+        "road",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 0,
+        "y": 2
+      },
+      {
+        "x": 5,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 6
+      }
+    ],
+    "par": 16
+  },
+  {
+    "id": "sector-15-midnight-run",
+    "grid": [
+      [
+        "depot",
+        "road",
+        "road",
+        "road",
+        "congested",
+        "road",
+        "road"
+      ],
+      [
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "drop",
+        "road",
+        "road",
+        "relay",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "block",
+        "block",
+        "block",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road",
+        "road",
+        "road"
+      ],
+      [
+        "road",
+        "block",
+        "block",
+        "road",
+        "block",
+        "block",
+        "road"
+      ],
+      [
+        "road",
+        "road",
+        "road",
+        "road",
+        "drop",
+        "road",
+        "road"
+      ]
+    ],
+    "depot": {
+      "x": 0,
+      "y": 0
+    },
+    "drops": [
+      {
+        "x": 0,
+        "y": 2
+      },
+      {
+        "x": 2,
+        "y": 4
+      },
+      {
+        "x": 4,
+        "y": 6
+      }
+    ],
+    "par": 16
+  }
+]
