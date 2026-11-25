@@ -14,6 +14,9 @@ export type EndCardProps = {
   onShare?: (() => Promise<void>) | undefined;
   alreadyDispatched?: boolean | undefined;
   attempt?: UserDailyAttempt | Record<string, unknown> | null | undefined;
+  confirmationStatus?: 'confirmed' | 'pending' | 'rejected' | undefined;
+  confirmationError?: string | null | undefined;
+  onRetryConfirmation?: (() => Promise<void> | void) | undefined;
 };
 
 export type EndCardViewModel = {
@@ -26,16 +29,53 @@ export type EndCardViewModel = {
   courierCountText: string | null;
   backTomorrowText: string;
   showShareButton: boolean;
+  confirmationStatus: 'confirmed' | 'pending' | 'rejected';
+  confirmationNotice?: string | undefined;
+  showRetryConfirmation: boolean;
 };
 
-export const isValidAttemptRecord = (data: unknown): data is UserDailyAttempt => {
-  if (typeof data !== 'object' || data === null) return false;
+export const isValidAttemptRecord = (
+  data: unknown,
+  expectedDayIndex?: number
+): data is UserDailyAttempt => {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
   const rec = data as Record<string, unknown>;
   if (rec.outcome !== 'won' && rec.outcome !== 'lost') return false;
-  if (typeof rec.movesUsed !== 'number' || !Number.isFinite(rec.movesUsed) || rec.movesUsed < 0) return false;
-  if (rec.stars !== 0 && rec.stars !== 1 && rec.stars !== 2 && rec.stars !== 3) return false;
-  if (typeof rec.deliveredCount !== 'number' || !Number.isFinite(rec.deliveredCount) || rec.deliveredCount < 0) return false;
+  if (
+    typeof rec.movesUsed !== 'number' ||
+    !Number.isFinite(rec.movesUsed) ||
+    !Number.isInteger(rec.movesUsed) ||
+    rec.movesUsed < 0
+  ) {
+    return false;
+  }
+  if (
+    typeof rec.stars !== 'number' ||
+    !Number.isInteger(rec.stars) ||
+    (rec.stars !== 0 && rec.stars !== 1 && rec.stars !== 2 && rec.stars !== 3)
+  ) {
+    return false;
+  }
+  if (
+    typeof rec.deliveredCount !== 'number' ||
+    !Number.isFinite(rec.deliveredCount) ||
+    !Number.isInteger(rec.deliveredCount) ||
+    rec.deliveredCount < 0
+  ) {
+    return false;
+  }
   if (rec.outcome === 'lost' && rec.stars !== 0) return false;
+  if (
+    expectedDayIndex !== undefined &&
+    'dayIndex' in rec &&
+    rec.dayIndex !== undefined &&
+    rec.dayIndex !== expectedDayIndex
+  ) {
+    return false;
+  }
+  if ('recordedAt' in rec && rec.recordedAt !== undefined && typeof rec.recordedAt !== 'string') {
+    return false;
+  }
   return true;
 };
 
@@ -54,7 +94,14 @@ export const renderStarGlyphs = (stars: StarRating, won: boolean): string => {
 };
 
 export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
-  const { streak, completions = 0, alreadyDispatched, attempt } = props;
+  const {
+    streak,
+    completions = 0,
+    alreadyDispatched,
+    attempt,
+    confirmationStatus = 'confirmed',
+    confirmationError,
+  } = props;
   const isBelowTrafficThreshold = completions < TRAFFIC_THRESHOLD;
   const streakText = `STREAK: ${streak} ${streak === 1 ? 'DAY' : 'DAYS'}`;
   const trafficDisplayText = isBelowTrafficThreshold
@@ -63,6 +110,23 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
   const courierCountText = isBelowTrafficThreshold
     ? null
     : `${completions} ${completions === 1 ? 'COURIER DISPATCHED' : 'COURIERS DISPATCHED'}`;
+
+  if (confirmationStatus === 'rejected') {
+    return {
+      resultHeading: 'DISPATCH REJECTED',
+      isWon: false,
+      starsGlyphs: '',
+      streakText,
+      isBelowTrafficThreshold,
+      trafficDisplayText,
+      courierCountText,
+      backTomorrowText: 'Back tomorrow for your next drop.',
+      showShareButton: false,
+      confirmationStatus: 'rejected',
+      confirmationNotice: confirmationError || 'Run rejected by server.',
+      showRetryConfirmation: false,
+    };
+  }
 
   const isInvalidOrMissingAttempt =
     alreadyDispatched ||
@@ -79,6 +143,9 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       courierCountText,
       backTomorrowText: 'Back tomorrow for your next drop.',
       showShareButton: false,
+      confirmationStatus,
+      confirmationNotice: undefined,
+      showRetryConfirmation: false,
     };
   }
 
@@ -94,7 +161,10 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
   const hasValidStars =
     effectiveWon ? (effectiveStars >= 1 && effectiveStars <= 3) : (effectiveStars === 0);
 
-  const showShareButton = hasValidMovesUsed && hasValidStars;
+  // Sharing is strictly disallowed until server confirms completion
+  const showShareButton =
+    confirmationStatus === 'confirmed' && hasValidMovesUsed && hasValidStars;
+  const showRetryConfirmation = confirmationStatus === 'pending';
 
   const resultHeading = effectiveWon ? 'ROUTE DELIVERED' : 'OUT OF MOVES';
   const starsGlyphs = renderStarGlyphs(effectiveStars, effectiveWon);
@@ -109,5 +179,11 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
     courierCountText,
     backTomorrowText: 'Back tomorrow for your next drop.',
     showShareButton,
+    confirmationStatus,
+    confirmationNotice:
+      confirmationStatus === 'pending'
+        ? (confirmationError || 'Dispatch unconfirmed. Tap retry to save your run.')
+        : undefined,
+    showRetryConfirmation,
   };
 };

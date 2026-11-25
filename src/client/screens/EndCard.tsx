@@ -6,7 +6,7 @@ import { getEndCardViewModel } from './endCardModel';
 
 export type { EndCardProps };
 
-type ShareStatus = 'idle' | 'pending' | 'success' | 'error';
+type ShareStatus = 'idle' | 'pending' | 'success' | 'error' | 'uncertain';
 
 export const EndCard = (props: EndCardProps) => {
   const {
@@ -21,6 +21,17 @@ export const EndCard = (props: EndCardProps) => {
   const model = getEndCardViewModel(props);
   const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRetryingConfirmation, setIsRetryingConfirmation] = useState(false);
+
+  const handleRetryConfirmation = async () => {
+    if (isRetryingConfirmation || !props.onRetryConfirmation) return;
+    setIsRetryingConfirmation(true);
+    try {
+      await props.onRetryConfirmation();
+    } finally {
+      setIsRetryingConfirmation(false);
+    }
+  };
 
   const handleShareClick = async () => {
     if (shareStatus === 'pending' || shareStatus === 'success') return;
@@ -60,6 +71,14 @@ export const EndCard = (props: EndCardProps) => {
       const data: ShareResponse = await res.json();
       if (res.ok && data.status === 'success') {
         setShareStatus('success');
+      } else if (res.status === 409 && data.status === 'error' && data.error === 'already_shared') {
+        setShareStatus('success');
+      } else if (data.status === 'uncertain') {
+        setShareStatus('uncertain');
+        setErrorMessage(data.message);
+      } else if (res.status === 409 && data.status === 'error' && data.error === 'share_in_progress') {
+        setShareStatus('idle');
+        setErrorMessage(data.message || 'Share in progress. Please wait a moment.');
       } else {
         setShareStatus('error');
         setErrorMessage(
@@ -83,13 +102,20 @@ export const EndCard = (props: EndCardProps) => {
           className={`text-xl sm:text-2xl font-black uppercase tracking-tight ${
             model.resultHeading === 'ALREADY DISPATCHED'
               ? 'text-zinc-300'
-              : model.isWon
-                ? 'text-emerald-400'
-                : 'text-rose-400'
+              : model.confirmationStatus === 'rejected'
+                ? 'text-rose-400'
+                : model.isWon
+                  ? 'text-emerald-400'
+                  : 'text-rose-400'
           }`}
         >
           {model.resultHeading}
         </div>
+        {model.confirmationStatus === 'pending' && (
+          <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+            ⚠️ CONFIRMATION PENDING
+          </div>
+        )}
       </div>
 
       {/* 2. Stars */}
@@ -122,13 +148,47 @@ export const EndCard = (props: EndCardProps) => {
         )}
       </div>
 
+      {/* Retry Confirmation Action for Pending State */}
+      {model.showRetryConfirmation && (
+        <div className="w-full space-y-2">
+          {model.confirmationNotice && (
+            <div className="w-full py-1.5 px-3 rounded bg-amber-950/40 border border-amber-500/50 text-[11px] font-bold text-amber-300">
+              {model.confirmationNotice}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleRetryConfirmation}
+            disabled={isRetryingConfirmation}
+            aria-label="Retry dispatch confirmation"
+            className="w-full min-h-[44px] py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-zinc-950 transition-all cursor-pointer flex items-center justify-center shadow-md"
+          >
+            {isRetryingConfirmation ? (
+              <>
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-zinc-950 animate-pulse mr-2" />
+                CONFIRMING DISPATCH...
+              </>
+            ) : (
+              'RETRY CONFIRMING DISPATCH'
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Rejection notice */}
+      {model.confirmationStatus === 'rejected' && model.confirmationNotice && (
+        <div className="w-full py-2 px-3 rounded bg-rose-950/40 border border-rose-500/50 text-[11px] font-bold text-rose-300">
+          {model.confirmationNotice}
+        </div>
+      )}
+
       {/* 5. Share Button */}
       {model.showShareButton && (
         <div className="w-full space-y-2">
           <button
             type="button"
             onClick={handleShareClick}
-            disabled={shareStatus === 'pending' || shareStatus === 'success'}
+            disabled={shareStatus === 'pending' || shareStatus === 'success' || shareStatus === 'uncertain'}
             aria-label="Share route summary to dispatch comments"
             className={`
               w-full min-h-[44px] py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider transition-all
@@ -136,11 +196,13 @@ export const EndCard = (props: EndCardProps) => {
               ${
                 shareStatus === 'success'
                   ? 'bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 cursor-default'
-                  : shareStatus === 'error'
-                    ? 'bg-rose-950/30 border border-rose-500/50 text-rose-300 hover:bg-rose-900/40 cursor-pointer'
-                    : shareStatus === 'pending'
-                      ? 'bg-zinc-800 border border-zinc-700 text-zinc-400 cursor-not-allowed opacity-80'
-                      : 'bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700 text-zinc-200 hover:text-white cursor-pointer shadow-md'
+                  : shareStatus === 'uncertain'
+                    ? 'bg-amber-950/30 border border-amber-500/50 text-amber-300 cursor-default'
+                    : shareStatus === 'error'
+                      ? 'bg-rose-950/30 border border-rose-500/50 text-rose-300 hover:bg-rose-900/40 cursor-pointer'
+                      : shareStatus === 'pending'
+                        ? 'bg-zinc-800 border border-zinc-700 text-zinc-400 cursor-not-allowed opacity-80'
+                        : 'bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700 text-zinc-200 hover:text-white cursor-pointer shadow-md'
               }
             `}
           >
@@ -149,25 +211,36 @@ export const EndCard = (props: EndCardProps) => {
             )}
             {shareStatus === 'success'
               ? 'DISPATCH LOGGED ✓'
-              : shareStatus === 'error'
-                ? 'RETRY DISPATCH SHARE'
-                : shareStatus === 'pending'
-                  ? 'POSTING DISPATCH...'
-                  : 'LOG ROUTE TO DISPATCH'}
+              : shareStatus === 'uncertain'
+                ? 'DISPATCH UNCONFIRMED'
+                : shareStatus === 'error'
+                  ? 'RETRY DISPATCH SHARE'
+                  : shareStatus === 'pending'
+                    ? 'POSTING DISPATCH...'
+                    : 'LOG ROUTE TO DISPATCH'}
           </button>
 
-          {shareStatus === 'error' && errorMessage && (
-            <p className="text-[10px] text-rose-400 tracking-tight">
+          {errorMessage && shareStatus !== 'success' && (
+            <p
+              className={`text-[10px] tracking-tight ${
+                shareStatus === 'uncertain' ? 'text-amber-400' : 'text-rose-400'
+              }`}
+            >
               {errorMessage}
             </p>
           )}
         </div>
       )}
 
-      {/* 6. "Back tomorrow" Text */}
-      <p className="text-xs text-zinc-400 tracking-wide pt-0.5">
-        {model.backTomorrowText}
-      </p>
+      {/* 6. "Back tomorrow" Text & UTC Reset notice */}
+      <div className="space-y-0.5 pt-0.5">
+        <p className="text-xs text-zinc-400 tracking-wide">
+          {model.backTomorrowText}
+        </p>
+        <p className="text-[10px] text-zinc-500 tracking-wider">
+          New sector unlocks daily at 00:00 UTC (reopen or refresh to load).
+        </p>
+      </div>
     </div>
   );
 };

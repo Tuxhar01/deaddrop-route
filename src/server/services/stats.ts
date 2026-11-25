@@ -12,6 +12,7 @@ export type TxClientLike = {
   ): Promise<unknown>;
   incrBy(key: string, value: number): Promise<unknown>;
   hIncrBy(key: string, field: string, value: number): Promise<unknown>;
+  del?(...keys: string[]): Promise<unknown>;
   get?(key: string): Promise<unknown>;
 };
 
@@ -50,14 +51,48 @@ export type RecordRunStatsResult = {
   status?: 'success' | 'already_completed' | 'retry_later';
 };
 
-export const isValidAttemptRecord = (data: unknown): data is UserDailyAttempt => {
-  if (typeof data !== 'object' || data === null) return false;
+export const isValidAttemptRecord = (
+  data: unknown,
+  expectedDayIndex?: number
+): data is UserDailyAttempt => {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
   const rec = data as Record<string, unknown>;
   if (rec.outcome !== 'won' && rec.outcome !== 'lost') return false;
-  if (typeof rec.movesUsed !== 'number' || !Number.isFinite(rec.movesUsed) || rec.movesUsed < 0) return false;
-  if (rec.stars !== 0 && rec.stars !== 1 && rec.stars !== 2 && rec.stars !== 3) return false;
-  if (typeof rec.deliveredCount !== 'number' || !Number.isFinite(rec.deliveredCount) || rec.deliveredCount < 0) return false;
+  if (
+    typeof rec.movesUsed !== 'number' ||
+    !Number.isFinite(rec.movesUsed) ||
+    !Number.isInteger(rec.movesUsed) ||
+    rec.movesUsed < 0
+  ) {
+    return false;
+  }
+  if (
+    typeof rec.stars !== 'number' ||
+    !Number.isInteger(rec.stars) ||
+    (rec.stars !== 0 && rec.stars !== 1 && rec.stars !== 2 && rec.stars !== 3)
+  ) {
+    return false;
+  }
+  if (
+    typeof rec.deliveredCount !== 'number' ||
+    !Number.isFinite(rec.deliveredCount) ||
+    !Number.isInteger(rec.deliveredCount) ||
+    rec.deliveredCount < 0
+  ) {
+    return false;
+  }
   if (rec.outcome === 'lost' && rec.stars !== 0) return false;
+  if (
+    expectedDayIndex !== undefined &&
+    'dayIndex' in rec &&
+    rec.dayIndex !== undefined &&
+    rec.dayIndex !== expectedDayIndex
+  ) {
+    return false;
+  }
+  if ('recordedAt' in rec && rec.recordedAt !== undefined && typeof rec.recordedAt !== 'string') {
+    return false;
+  }
   return true;
 };
 
@@ -110,12 +145,13 @@ export const getUserDailyStats = async (
       if (rawAttempt) {
         try {
           const parsed = JSON.parse(rawAttempt);
-          if (isValidAttemptRecord(parsed)) {
+          if (isValidAttemptRecord(parsed, dayIndex)) {
             attempt = {
               outcome: parsed.outcome,
               movesUsed: parsed.movesUsed,
               stars: parsed.stars,
               deliveredCount: parsed.deliveredCount,
+              ...(typeof parsed.dayIndex === 'number' ? { dayIndex: parsed.dayIndex } : {}),
               ...(typeof parsed.recordedAt === 'string' ? { recordedAt: parsed.recordedAt } : {}),
             };
           }
@@ -142,12 +178,13 @@ const readDuplicateState = async (
     const rawAttempt = await client.get(attemptKey);
     if (rawAttempt) {
       const parsed = JSON.parse(rawAttempt);
-      if (isValidAttemptRecord(parsed)) {
+      if (isValidAttemptRecord(parsed, dayIndex)) {
         storedAttempt = {
           outcome: parsed.outcome,
           movesUsed: parsed.movesUsed,
           stars: parsed.stars,
           deliveredCount: parsed.deliveredCount,
+          ...(typeof parsed.dayIndex === 'number' ? { dayIndex: parsed.dayIndex } : {}),
           ...(typeof parsed.recordedAt === 'string' ? { recordedAt: parsed.recordedAt } : {}),
         };
       }
@@ -260,6 +297,7 @@ export const recordRunStats = async (
     movesUsed,
     stars: typeof stars === 'number' ? stars : (won ? 1 : 0),
     deliveredCount: typeof deliveredCount === 'number' ? deliveredCount : (won ? 3 : 0),
+    dayIndex,
     recordedAt: new Date().toISOString(),
   };
 
@@ -344,66 +382,116 @@ export const recordRunStats = async (
         const p = parseInt(rawB, 10);
         if (!Number.isNaN(p)) prevBest = p;
       }
-    } catch {
-      // Best-effort read of base stats
+    } catch (readErr) {
+      if (typeof txn.discard === 'function') {
+        try {
+          await txn.discard();
+        } catch {
+          // ignore discard errors
+        }
+      }
+      console.warn(`[Stats] Error reading pre-transaction stats on attempt ${attemptNum}:`, readErr);
+      if (attemptNum === maxAttempts) {
+        return {
+          streak: 0,
+          bestMoves: null,
+          completions: 0,
+          isFirstCompletionToday: false,
+          traffic: {},
+          attempt: null,
+          status: 'retry_later',
+        };
+      }
+      continue;
     }
 
-    // 3. Otherwise: await txn.multi(), then queue every write on txn
-    await txn.multi();
     let queuedCommandsCount = 0;
-
-    // a. completion flag (set)
-    await txn.set(completionKey, '1');
-    queuedCommandsCount++;
-
-    // b. attempt record (set)
-    await txn.set(attemptKey, JSON.stringify(attemptRecord));
-    queuedCommandsCount++;
-
-    // c. streak (incrBy on win, or set if reset; unchanged on loss)
     let newStreak = prevStreak;
-    if (won) {
-      const lastDay = rawLastDay ? parseInt(rawLastDay, 10) : null;
-      if (lastDay === dayIndex - 1 || (lastDay === null && prevStreak === 0)) {
-        // Consecutive UTC win or first win
-        await txn.incrBy(streakKey, 1);
-        queuedCommandsCount++;
-        newStreak = prevStreak + 1;
-      } else if (lastDay === dayIndex) {
-        // Already recorded today (keep streak)
-        newStreak = Math.max(1, prevStreak);
-      } else {
-        // Missed one or more days: reset to 1
-        await txn.set(streakKey, '1');
-        queuedCommandsCount++;
-        newStreak = 1;
-      }
-      await txn.set(lastDayKey, String(dayIndex));
-      queuedCommandsCount++;
-    }
-
-    // d. completions (incrBy)
-    await txn.incrBy(completionsKey, 1);
-    queuedCommandsCount++;
-    const newCompletions = prevCompletions + 1;
-
-    // e. traffic (hIncrBy per visited tile)
+    let newCompletions = prevCompletions + 1;
     const newTraffic: Record<string, number> = { ...baseTraffic };
-    for (const tileId of uniqueTiles) {
-      await txn.hIncrBy(trafficKey, tileId, 1);
-      queuedCommandsCount++;
-      newTraffic[tileId] = (newTraffic[tileId] ?? 0) + 1;
-    }
-
-    // f. bestMoves (set, only when it's a new best)
     let newBestMoves = prevBest;
-    if (won) {
-      const isNewBest = prevBest === null || Number.isNaN(prevBest) || movesUsed < prevBest;
-      if (isNewBest) {
-        await txn.set(bestKey, String(movesUsed));
+
+    let completionsIdx: number | undefined;
+    let streakIncrIdx = -1;
+    const tileIndices = new Map<string, number>();
+
+    try {
+      // 3. Otherwise: await txn.multi(), then queue every write on txn
+      await txn.multi();
+
+      // a. completion flag (set)
+      await txn.set(completionKey, '1');
+      queuedCommandsCount++;
+
+      // b. attempt record (set)
+      await txn.set(attemptKey, JSON.stringify(attemptRecord));
+      queuedCommandsCount++;
+
+      // c. streak (incrBy on win, or set if reset; unchanged on loss)
+      if (won) {
+        const lastDay = rawLastDay ? parseInt(rawLastDay, 10) : null;
+        if (lastDay === dayIndex - 1 || (lastDay === null && prevStreak === 0)) {
+          // Consecutive UTC win or first win
+          streakIncrIdx = queuedCommandsCount;
+          await txn.incrBy(streakKey, 1);
+          queuedCommandsCount++;
+          newStreak = prevStreak + 1;
+        } else if (lastDay === dayIndex) {
+          // Already recorded today (keep streak)
+          newStreak = Math.max(1, prevStreak);
+        } else {
+          // Missed one or more days: reset to 1
+          await txn.set(streakKey, '1');
+          queuedCommandsCount++;
+          newStreak = 1;
+        }
+        await txn.set(lastDayKey, String(dayIndex));
         queuedCommandsCount++;
-        newBestMoves = movesUsed;
       }
+
+      // d. completions (incrBy)
+      completionsIdx = queuedCommandsCount;
+      await txn.incrBy(completionsKey, 1);
+      queuedCommandsCount++;
+
+      // e. traffic (hIncrBy per visited tile)
+      for (const tileId of uniqueTiles) {
+        tileIndices.set(tileId, queuedCommandsCount);
+        await txn.hIncrBy(trafficKey, tileId, 1);
+        queuedCommandsCount++;
+        newTraffic[tileId] = (newTraffic[tileId] ?? 0) + 1;
+      }
+
+      // f. bestMoves (set, only when it's a new best)
+      if (won) {
+        const isNewBest = prevBest === null || Number.isNaN(prevBest) || movesUsed < prevBest;
+        if (isNewBest) {
+          await txn.set(bestKey, String(movesUsed));
+          queuedCommandsCount++;
+          newBestMoves = movesUsed;
+        }
+      }
+    } catch (queueErr) {
+      console.warn(`[Stats] Error queueing transaction commands on attempt ${attemptNum}:`, queueErr);
+      if (typeof txn.discard === 'function') {
+        try {
+          await txn.discard();
+        } catch {
+          // ignore
+        }
+      }
+      if (attemptNum === maxAttempts) {
+        return {
+          streak: 0,
+          bestMoves: null,
+          completions: 0,
+          isFirstCompletionToday: false,
+          traffic: {},
+          attempt: null,
+          status: 'retry_later',
+        };
+      }
+      continue;
     }
 
     // 4. If you queued zero commands, do not call exec. This should not happen for a valid win; treat it as an error.
@@ -433,6 +521,38 @@ export const recordRunStats = async (
 
     // 6. Only return 200 when exec returned an array with exactly one result per queued command
     if (!isAbort && Array.isArray(results) && results.length === queuedCommandsCount) {
+      if (completionsIdx !== undefined && results[completionsIdx] !== undefined && results[completionsIdx] !== null) {
+        const parsedComp =
+          typeof results[completionsIdx] === 'number'
+            ? (results[completionsIdx] as number)
+            : parseInt(String(results[completionsIdx]), 10);
+        if (!Number.isNaN(parsedComp)) {
+          newCompletions = parsedComp;
+        }
+      }
+
+      if (streakIncrIdx >= 0 && results[streakIncrIdx] !== undefined && results[streakIncrIdx] !== null) {
+        const parsedStreak =
+          typeof results[streakIncrIdx] === 'number'
+            ? (results[streakIncrIdx] as number)
+            : parseInt(String(results[streakIncrIdx]), 10);
+        if (!Number.isNaN(parsedStreak)) {
+          newStreak = parsedStreak;
+        }
+      }
+
+      for (const [tileId, tIdx] of tileIndices.entries()) {
+        if (tIdx >= 0 && results[tIdx] !== undefined && results[tIdx] !== null) {
+          const parsedTile =
+            typeof results[tIdx] === 'number'
+              ? (results[tIdx] as number)
+              : parseInt(String(results[tIdx]), 10);
+          if (!Number.isNaN(parsedTile)) {
+            newTraffic[tileId] = parsedTile;
+          }
+        }
+      }
+
       return {
         streak: newStreak,
         bestMoves: newBestMoves,
@@ -445,9 +565,13 @@ export const recordRunStats = async (
     }
 
     // An abort: re-read the completion flag. If it now exists, return 409 with the stored attempt.
-    const flagAfterAbort = await client.get(completionKey);
-    if (flagAfterAbort !== undefined && flagAfterAbort !== null && flagAfterAbort !== '') {
-      return readDuplicateState(userId, dayIndex, client);
+    try {
+      const flagAfterAbort = await client.get(completionKey);
+      if (flagAfterAbort !== undefined && flagAfterAbort !== null && flagAfterAbort !== '') {
+        return readDuplicateState(userId, dayIndex, client);
+      }
+    } catch (flagReadErr) {
+      console.warn(`[Stats] Error checking completion flag after abort:`, flagReadErr);
     }
 
     // If not, retry the whole block once.

@@ -78,5 +78,6 @@ export const getDailyPayload = async (
 daily.get('/', async (c) => {
   const redisClient = c.env?.redisClient ?? redis;
   const payload = await getDailyPayload({ redisClient });
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate');
   return c.json<DailyResponse>(payload);
 });

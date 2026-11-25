@@ -95,4 +95,51 @@ void describe('useRun Hook State & Step Logic Parity', () => {
     assert.strictEqual(nextSession.movePath.length, 0, 'movePath should not record illegal steps');
     assert.deepStrictEqual(nextSession.state.currentPosition, initialPos);
   });
+
+  void it('rejects unaffordable congested move without declaring loss or recording step', () => {
+    const map = SEEDS[0]!;
+    // Create session with default budget (19) ending at (2,6) where (3,6) is congested (cost 2)
+    const session = createRunSession(map);
+    const pathPrefix: Direction[] = [
+      'down', 'down', 'right', 'right',
+      'down', 'down',
+      'left', 'left', 'down', 'down', 'right', 'right',
+      'left', 'right',
+      'left', 'right',
+      'left', 'right',
+    ];
+
+    let current = session;
+    for (const dir of pathPrefix) {
+      current = applyRunStep(current, dir, map).nextSession;
+    }
+
+    assert.strictEqual(current.state.currentPosition.x, 2);
+    assert.strictEqual(current.state.currentPosition.y, 6);
+    assert.strictEqual(current.state.movesLeft, 1);
+    assert.strictEqual(current.state.lost, false);
+
+    // Attempt to step right into (3,6) which is congested (cost 2)
+    const { nextSession, outcome } = applyRunStep(current, 'right', map);
+
+    assert.strictEqual(outcome.valid, false);
+    assert.strictEqual(outcome.reason, 'insufficient_moves');
+    assert.strictEqual(outcome.lost, false);
+    assert.strictEqual(nextSession.state.lost, false);
+    assert.strictEqual(nextSession.state.movesLeft, 1);
+    assert.strictEqual(nextSession.movePath.length, 18, 'movePath must not record unaffordable step');
+
+    // Courier now takes an affordable step left to (1,6) (cost 1)
+    const finalStep = applyRunStep(nextSession, 'left', map);
+    assert.strictEqual(finalStep.outcome.valid, true);
+    assert.strictEqual(finalStep.nextSession.state.movesLeft, 0);
+    assert.strictEqual(finalStep.nextSession.state.lost, true);
+    assert.strictEqual(finalStep.nextSession.movePath.length, 19, 'movePath must include the move that exhausted budget');
+
+    // Server replay of this valid terminal path must succeed
+    const replay = replayPath(map, finalStep.nextSession.movePath);
+    assert.strictEqual(replay.success, true);
+    assert.strictEqual(replay.lost, true);
+    assert.strictEqual(replay.won, false);
+  });
 });

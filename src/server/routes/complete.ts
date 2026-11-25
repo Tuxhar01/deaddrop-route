@@ -72,18 +72,29 @@ export const createCompleteRoute = (defaultDeps: { redisClient?: RedisClientLike
 
     const redisClient = c.env?.redisClient ?? defaultDeps.redisClient ?? redis;
 
-    const stats = await recordRunStats(
-      {
-        userId,
-        dayIndex,
-        movesUsed: result.movesUsed,
-        won: result.won,
-        visitedCoordinates: result.visitedCoordinates,
-        stars: result.stars,
-        deliveredCount: result.deliveredCount,
-      },
-      redisClient
-    );
+    let stats;
+    try {
+      stats = await recordRunStats(
+        {
+          userId,
+          dayIndex,
+          movesUsed: result.movesUsed,
+          won: result.won,
+          visitedCoordinates: result.visitedCoordinates,
+          stars: result.stars,
+          deliveredCount: result.deliveredCount,
+        },
+        redisClient
+      );
+    } catch (storageErr) {
+      console.error('[Complete] Unexpected error recording run stats:', storageErr);
+      return c.json<CompleteResponse>(
+        {
+          status: 'retry_later',
+        },
+        503
+      );
+    }
 
     if (stats.status === 'retry_later') {
       return c.json<CompleteResponse>(

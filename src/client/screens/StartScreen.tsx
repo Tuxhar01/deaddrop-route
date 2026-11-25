@@ -13,9 +13,14 @@ export const StartScreen = ({ date, streak, onPlay, hasAttempt }: StartScreenPro
         Dead Drop Route
       </h1>
 
-      {/* 2. Today's Date */}
-      <div className="text-xs font-semibold text-amber-400 tracking-wider">
-        {date}
+      {/* 2. Today's Date & UTC Reset */}
+      <div className="space-y-0.5">
+        <div className="text-xs font-semibold text-amber-400 tracking-wider">
+          {date}
+        </div>
+        <div className="text-[10px] text-zinc-500 tracking-wider">
+          New sector unlocks daily at 00:00 UTC
+        </div>
       </div>
 
       {/* 3. One-line Hook */}
@@ -28,7 +33,36 @@ export const StartScreen = ({ date, streak, onPlay, hasAttempt }: StartScreenPro
         STREAK: {streak} {streak === 1 ? 'DAY' : 'DAYS'}
       </div>
 
-      {/* 5. Play Button */}
+      {/* 5. Courier Briefing / Instructions */}
+      <div className="w-full p-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800/80 text-left space-y-1 text-[11px] leading-snug text-zinc-400">
+        <div className="text-[10px] font-bold text-amber-400 tracking-widest uppercase">
+          Shift Briefing
+        </div>
+        <ul className="space-y-1">
+          <li className="flex items-start gap-1.5">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Deliver all 3 packages (D1–D3) in any order; no need to return to HQ.</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Tap adjacent reachable tiles to move; desktop also supports arrow keys/WASD.</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Every move consumes budget; congested tiles (+2) cost 2 moves.</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Relay tiles (⚡) restore 2 moves once per run.</span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>One recorded attempt per UTC day. Reopen post after 00:00 UTC to refresh.</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* 6. Play Button */}
       <button
         type="button"
         onClick={onPlay}

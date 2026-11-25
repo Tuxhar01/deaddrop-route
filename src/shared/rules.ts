@@ -135,6 +135,33 @@ export const validateMap = (map: GameMap): MapValidationResult => {
   };
 };
 
+export const hasAffordableMovesFrom = (
+  position: Coordinate,
+  movesLeft: number,
+  map: GameMap
+): boolean => {
+  if (movesLeft <= 0) {
+    return false;
+  }
+  const directions: Direction[] = ['up', 'down', 'left', 'right'];
+  for (let i = 0; i < directions.length; i++) {
+    const dir = directions[i]!;
+    const nextCoord = getNextCoordinate(position, dir);
+    if (!isWithinBounds(nextCoord.x, nextCoord.y)) {
+      continue;
+    }
+    const row = map.grid[nextCoord.y];
+    const tile = row ? row[nextCoord.x] : undefined;
+    if (!tile || !isPassableTile(tile)) {
+      continue;
+    }
+    if (movesLeft >= getStepCost(tile)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const computeStars = (movesUsed: number, par: number): StarRating => {
   if (movesUsed <= par) {
     return 3;
@@ -264,15 +291,10 @@ export const executeStep = (
       deliveredCount: state.deliveredIndices.length,
       isDelivered: false,
       isRelayTriggered: false,
-      won: false,
-      lost: true,
+      won: state.won,
+      lost: state.lost,
     };
-    const nextState: RunState = {
-      ...state,
-      lost: true,
-      stars: 0,
-    };
-    return { state: nextState, outcome };
+    return { state, outcome };
   }
 
   const newMovesUsed = state.movesUsed + stepCost;
@@ -311,7 +333,8 @@ export const executeStep = (
 
   const deliveredCount = newDeliveredIndices.length;
   const won = deliveredCount === TOTAL_DROPS;
-  const lost = !won && newMovesLeft <= 0;
+  const lost =
+    !won && (newMovesLeft <= 0 || !hasAffordableMovesFrom(targetCoord, newMovesLeft, map));
   const stars: StarRating = won ? computeStars(newMovesUsed, map.par) : 0;
 
   const nextState: RunState = {

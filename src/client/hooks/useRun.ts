@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
-import { createInitialRunState, executeStep, GRID_SIZE, isPassableTile, isWithinBounds, TOTAL_DROPS } from '../../shared/rules.ts';
+import { createInitialRunState, executeStep, getStepCost, GRID_SIZE, isPassableTile, isWithinBounds, TOTAL_DROPS } from '../../shared/rules.ts';
 import type { Coordinate, Direction, GameMap, RunState, StarRating, StepOutcome } from '../../shared/types';
 
 export type RunSession = {
@@ -127,7 +127,11 @@ export const useRun = (
       if (!isWithinBounds(target.x, target.y)) return false;
       const row = map.grid[target.y];
       const tile = row ? row[target.x] : undefined;
-      return tile !== undefined && isPassableTile(tile);
+      return (
+        tile !== undefined &&
+        isPassableTile(tile) &&
+        session.state.movesLeft >= getStepCost(tile)
+      );
     },
     [map, session]
   );

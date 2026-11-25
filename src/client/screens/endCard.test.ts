@@ -282,4 +282,56 @@ void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)',
     assert.strictEqual(lossModel.resultHeading, 'OUT OF MOVES');
     assert.strictEqual(lossModel.showShareButton, true, 'Valid loss card must show share button');
   });
+
+  void it('Task 3B: Pending confirmation disables sharing and enables retry confirmation action', () => {
+    const pendingModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 2,
+      movesUsed: 14,
+      completions: 3,
+      confirmationStatus: 'pending',
+      confirmationError: 'Connection timeout. Tap retry to save.',
+    });
+
+    assert.strictEqual(pendingModel.showShareButton, false, 'Sharing MUST be disabled until confirmed');
+    assert.strictEqual(pendingModel.showRetryConfirmation, true, 'Retry confirmation action MUST be available');
+    assert.strictEqual(pendingModel.resultHeading, 'ROUTE DELIVERED', 'Local outcome preserved');
+    assert.strictEqual(pendingModel.starsGlyphs, '★★★', 'Stars preserved');
+    assert.strictEqual(pendingModel.streakText, 'STREAK: 2 DAYS', 'Streak not fabricated');
+    assert.ok(pendingModel.confirmationNotice?.includes('Connection timeout'));
+  });
+
+  void it('Task 3B: Rejected confirmation disables sharing and shows rejection state', () => {
+    const rejectedModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 2,
+      movesUsed: 14,
+      completions: 3,
+      confirmationStatus: 'rejected',
+      confirmationError: 'Authentication session expired',
+    });
+
+    assert.strictEqual(rejectedModel.showShareButton, false, 'Sharing MUST be disabled when rejected');
+    assert.strictEqual(rejectedModel.showRetryConfirmation, false, 'No retry when definitively rejected');
+    assert.strictEqual(rejectedModel.resultHeading, 'DISPATCH REJECTED');
+    assert.strictEqual(rejectedModel.starsGlyphs, '');
+    assert.strictEqual(rejectedModel.confirmationNotice, 'Authentication session expired');
+  });
+
+  void it('Task 3B: Confirmed completion displays valid stars and enables sharing', () => {
+    const confirmedModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 3,
+      movesUsed: 14,
+      completions: 4,
+      confirmationStatus: 'confirmed',
+    });
+
+    assert.strictEqual(confirmedModel.showShareButton, true, 'Sharing enabled upon server confirmation');
+    assert.strictEqual(confirmedModel.showRetryConfirmation, false);
+    assert.strictEqual(confirmedModel.resultHeading, 'ROUTE DELIVERED');
+  });
 });

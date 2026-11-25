@@ -88,9 +88,9 @@ const endCardBelowThreshold = getEndCardViewModel({
 
 assert.strictEqual(endCardBelowThreshold.resultHeading, 'ROUTE DELIVERED');
 assert.strictEqual(endCardBelowThreshold.starsGlyphs, '★★★');
-assert.strictEqual(endCardBelowThreshold.streakText, 'CURRENT STREAK: 1 DAY');
+assert.strictEqual(endCardBelowThreshold.streakText, 'STREAK: 1 DAY');
 assert.strictEqual(endCardBelowThreshold.isBelowTrafficThreshold, true);
-assert.strictEqual(endCardBelowThreshold.trafficDisplayText, 'Be the first to route');
+assert.strictEqual(endCardBelowThreshold.trafficDisplayText, 'BE THE FIRST TO ROUTE');
 assert.strictEqual(endCardBelowThreshold.courierCountText, null);
 assert.strictEqual(endCardBelowThreshold.backTomorrowText, 'Back tomorrow for your next drop.');
 console.log('   ✓ Below-threshold (completions=1 < 5) renders "Be the first to route" (no fake stats)');

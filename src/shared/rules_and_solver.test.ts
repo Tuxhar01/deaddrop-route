@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Coordinate, GameMap, Grid, TileType } from './types';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
-import { computeStars, createInitialRunState, executeStep, getStepCost, GRID_SIZE, isWithinBounds, replayPath, validateMap } from './rules.ts';
+import { computeStars, createInitialRunState, executeStep, getStepCost, GRID_SIZE, hasAffordableMovesFrom, isWithinBounds, replayPath, validateMap } from './rules.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { solveMap, solveMapDetailed } from './solver.ts';
 
@@ -146,7 +146,7 @@ void describe('Shared Rules: Congested Cost (2 moves)', () => {
     assert.equal(nextState.currentPosition.y, 0);
   });
 
-  void it('marks loss and rejects move if courier cannot afford congested step cost (movesLeft < 2)', () => {
+  void it('rejects move without marking premature loss if courier cannot afford congested step cost (movesLeft < 2)', () => {
     const map = createTestMap({
       tileOverrides: { '1,0': 'congested' },
     });
@@ -155,8 +155,11 @@ void describe('Shared Rules: Congested Cost (2 moves)', () => {
     const { state: nextState, outcome } = executeStep(state, 'right', map);
     assert.equal(outcome.valid, false);
     assert.equal(outcome.reason, 'insufficient_moves');
-    assert.equal(nextState.lost, true);
+    assert.equal(nextState.lost, false);
     assert.equal(nextState.won, false);
+    assert.equal(nextState.movesLeft, 1);
+    assert.equal(nextState.currentPosition.x, 0);
+    assert.equal(nextState.currentPosition.y, 0);
   });
 });
 
@@ -306,6 +309,31 @@ void describe('Shared Rules: Loss Conditions & Zero Moves', () => {
     assert.equal(result.lost, false);
     assert.equal(result.movesLeft, 0);
     assert.equal(result.stars, 3);
+  });
+
+  void it('terminates with loss when courier enters dead-end with movesLeft > 0 but no affordable legal moves', () => {
+    // Corridor: (0,0) road -> (1,0) congested (cost 2) -> (2,0) road (dead-end)
+    // Neighbors of (2,0): (3,0) block, (2,1) block, (2,-1) OOB, and (1,0) congested (cost 2).
+    // Starting with budget = 4:
+    // Step 1: to (1,0) [cost 2] -> movesLeft = 2
+    // Step 2: to (2,0) [cost 1] -> movesLeft = 1
+    // At (2,0), movesLeft = 1. Only passable neighbor is (1,0), which costs 2.
+    // hasAffordableMovesFrom returns false -> run immediately terminates as loss with valid step.
+    const map = createTestMap({
+      tileOverrides: {
+        '1,0': 'congested',
+        '2,0': 'road',
+        '3,0': 'block',
+        '2,1': 'block',
+      },
+    });
+
+    const result = replayPath(map, ['right', 'right'], 4);
+    assert.equal(result.success, true);
+    assert.equal(result.won, false);
+    assert.equal(result.lost, true);
+    assert.equal(result.movesLeft, 1);
+    assert.equal(result.stars, 0);
   });
 });
 

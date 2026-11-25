@@ -175,7 +175,10 @@ export const Board = ({
                 Math.abs(runState.currentPosition.x - x) +
                   Math.abs(runState.currentPosition.y - y) ===
                 1;
-              const isClickable = !isInputLocked && isAdjacent && tile !== 'block';
+              const isPassable = tile !== 'block';
+              const stepCost = tile === 'congested' ? 2 : 1;
+              const isAffordable = runState.movesLeft >= stepCost;
+              const isLegalMove = !isInputLocked && isAdjacent && isPassable && isAffordable;
 
               const visuals = getTileVisuals(
                 tile,
@@ -191,13 +194,17 @@ export const Board = ({
                   key={`cell-${x}-${y}`}
                   type="button"
                   onClick={() => handleCellClick(x, y)}
-                  disabled={isInputLocked || !isAdjacent}
-                  aria-label={`Tile at column ${x + 1}, row ${y + 1}: ${visuals.label}${isCourier ? ' (COURIER PRESENT)' : ''}`}
+                  disabled={!isLegalMove}
+                  aria-label={`Tile at column ${x + 1}, row ${y + 1}: ${visuals.label}${isCourier ? ' (COURIER PRESENT)' : ''}${isLegalMove ? ' (LEGAL MOVE)' : ''}`}
                   className={`
                     relative flex flex-col items-center justify-center rounded border transition-all duration-150
                     text-[10px] sm:text-xs font-bold
                     ${visuals.bg}
-                    ${isClickable ? 'cursor-pointer hover:border-amber-400/80 hover:scale-[1.03] active:scale-95' : 'cursor-default'}
+                    ${
+                      isLegalMove
+                        ? 'ring-1 ring-inset ring-amber-400/50 border-amber-400/80 shadow-[0_0_6px_rgba(251,191,36,0.15)] cursor-pointer hover:border-amber-300 hover:scale-[1.03] active:scale-95'
+                        : 'cursor-default'
+                    }
                     ${isCourier ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-zinc-950 z-20 shadow-lg shadow-amber-500/30' : ''}
                   `}
                 >

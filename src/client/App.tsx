@@ -1,28 +1,35 @@
 import { useEffect, useState } from 'react';
 import { formatUtcDate, getDailyMap, getUtcDayIndex } from '../shared/dates';
-import type { CompleteResponse, DailyResponse, StarRating } from '../shared/types';
+import type { DailyResponse } from '../shared/types';
 import { useRun } from './hooks/useRun';
 import { EndCard } from './screens/EndCard';
 import { PlayScreen } from './screens/PlayScreen';
 import { StartScreen } from './screens/StartScreen';
+import {
+  SubmissionController,
+  type CompletedRunStats,
+  type ScreenState,
+} from './submissionController';
 
-export type ScreenState = 'start' | 'play' | 'end';
-
-type CompletedRunStats = {
-  won: boolean;
-  stars: StarRating;
-  streak: number;
-  movesUsed: number;
-  completions: number;
-  traffic?: Record<string, number> | undefined;
-  alreadyDispatched?: boolean | undefined;
-};
+export type { ScreenState };
 
 export const App = () => {
   const [screen, setScreen] = useState<ScreenState>('start');
   const [dailyData, setDailyData] = useState<DailyResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [completedStats, setCompletedStats] = useState<CompletedRunStats | null>(null);
+
+  const [controller] = useState(
+    () =>
+      new SubmissionController({
+        onStateChange: (stats) => {
+          setCompletedStats(stats);
+        },
+        onScreenChange: (nextScreen) => {
+          setScreen(nextScreen);
+        },
+      })
+  );
 
   // Load daily dispatch data from API with deterministic offline fallback
   useEffect(() => {
@@ -37,6 +44,7 @@ export const App = () => {
         const data: DailyResponse = await res.json();
         if (!isCancelled) {
           setDailyData(data);
+          controller.setDailyData(data);
           setLoading(false);
         }
       } catch (err) {
@@ -45,7 +53,7 @@ export const App = () => {
           const dayIndex = getUtcDayIndex();
           const date = formatUtcDate();
           const map = getDailyMap(dayIndex);
-          setDailyData({
+          const fallbackData: DailyResponse = {
             dayIndex,
             date,
             map,
@@ -55,7 +63,9 @@ export const App = () => {
             completions: 0,
             attempt: null,
             alreadyCompleted: false,
-          });
+          };
+          setDailyData(fallbackData);
+          controller.setDailyData(fallbackData);
           setLoading(false);
         }
       }
@@ -66,87 +76,33 @@ export const App = () => {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [controller]);
 
   const run = useRun(dailyData?.map ?? null);
 
-  // Submit run to POST /api/complete upon reaching terminal win/loss state
+  // Submit run to POST /api/complete once upon reaching terminal win/loss state
   useEffect(() => {
-    if (screen === 'play' && (run.won || run.lost) && !completedStats && dailyData) {
-      let isCancelled = false;
-
-      const submitRun = async () => {
-        try {
-          const res = await fetch('/api/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              dayIndex: dailyData.dayIndex,
-              path: run.movePath,
-            }),
-          });
-
-          if (res.ok) {
-            const data: CompleteResponse = await res.json();
-            if (!isCancelled && data.status === 'success') {
-              setCompletedStats({
-                won: data.won,
-                stars: data.stars,
-                streak: data.streak ?? (data.won ? dailyData.streak + 1 : dailyData.streak),
-                movesUsed: data.movesUsed,
-                completions: data.completions ?? dailyData.completions ?? 0,
-                traffic: data.traffic,
-              });
-              setScreen('end');
-              return;
-            }
-          } else if (res.status === 409) {
-            const data: CompleteResponse = await res.json();
-            if (!isCancelled && data.status === 'already_completed') {
-              if (data.attempt) {
-                setCompletedStats({
-                  won: data.attempt.outcome === 'won',
-                  stars: data.attempt.stars,
-                  streak: dailyData.streak,
-                  movesUsed: data.attempt.movesUsed,
-                  completions: dailyData.completions ?? 0,
-                });
-              } else {
-                setCompletedStats({
-                  alreadyDispatched: true,
-                  won: false,
-                  stars: 0,
-                  streak: dailyData.streak,
-                  movesUsed: 0,
-                  completions: dailyData.completions ?? 0,
-                });
-              }
-              setScreen('end');
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('[App] Error submitting run to /api/complete, using local fallback:', err);
-        }
-
-        if (!isCancelled) {
-          setCompletedStats({
-            won: run.won,
-            stars: run.stars,
-            streak: run.won ? dailyData.streak + 1 : dailyData.streak,
-            movesUsed: run.movesUsed,
-            completions: dailyData.completions ?? 0,
-          });
-          setScreen('end');
-        }
-      };
+    if (
+      screen === 'play' &&
+      (run.won || run.lost) &&
+      !completedStats &&
+      dailyData &&
+      controller.canAutoSubmit()
+    ) {
+      controller.markAutoSubmitted();
+      controller.captureTerminalRun({
+        dayIndex: dailyData.dayIndex,
+        path: run.movePath,
+        movesUsed: run.movesUsed,
+        stars: run.stars,
+        won: run.won,
+      });
 
       const timer = setTimeout(() => {
-        void submitRun();
+        void controller.submitRun(false);
       }, 500);
 
       return () => {
-        isCancelled = true;
         clearTimeout(timer);
       };
     }
@@ -154,40 +110,48 @@ export const App = () => {
     screen,
     run.won,
     run.lost,
+    completedStats,
+    dailyData,
     run.movePath,
     run.movesUsed,
     run.stars,
-    dailyData,
-    completedStats,
+    controller,
   ]);
 
   const handleReset = () => {
+    controller.startNewRun();
     run.reset();
     setCompletedStats(null);
   };
 
   const handlePlayOrViewResult = () => {
     if (dailyData?.attempt) {
-      setCompletedStats({
+      const stats: CompletedRunStats = {
         won: dailyData.attempt.outcome === 'won',
         stars: dailyData.attempt.stars,
         streak: dailyData.streak,
         movesUsed: dailyData.attempt.movesUsed,
         completions: dailyData.completions ?? 0,
-      });
+        confirmationStatus: 'confirmed',
+      };
+      controller.setCompletedStats(stats);
+      setCompletedStats(stats);
       setScreen('end');
       return;
     }
 
     if (dailyData?.alreadyCompleted) {
-      setCompletedStats({
+      const stats: CompletedRunStats = {
         alreadyDispatched: true,
         won: false,
         stars: 0,
         streak: dailyData.streak,
         movesUsed: 0,
         completions: dailyData.completions ?? 0,
-      });
+        confirmationStatus: 'confirmed',
+      };
+      controller.setCompletedStats(stats);
+      setCompletedStats(stats);
       setScreen('end');
       return;
     }
@@ -239,6 +203,11 @@ export const App = () => {
           traffic={completedStats?.traffic}
           postId={dailyData.postId}
           alreadyDispatched={completedStats?.alreadyDispatched}
+          confirmationStatus={completedStats?.confirmationStatus ?? 'confirmed'}
+          confirmationError={completedStats?.confirmationError}
+          onRetryConfirmation={async () => {
+            await controller.submitRun(true);
+          }}
         />
       )}
     </main>

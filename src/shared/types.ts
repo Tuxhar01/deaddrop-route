@@ -85,7 +85,10 @@ export type UserDailyAttempt = {
   stars: StarRating;
   deliveredCount: number;
   recordedAt?: string | undefined;
+  dayIndex?: number | undefined;
 };
+
+export type AttemptRecord = UserDailyAttempt;
 
 export type DailyResponse = {
   dayIndex: number;
@@ -137,11 +140,11 @@ export type CompleteResponse =
     };
 
 export type ShareSubmission = {
-  dayIndex: number;
-  won: boolean;
-  movesUsed: number;
-  stars: StarRating;
-  streak: number;
+  dayIndex?: number;
+  won?: boolean;
+  movesUsed?: number;
+  stars?: StarRating;
+  streak?: number;
   postId?: string | undefined;
 };
 
@@ -149,6 +152,13 @@ export type ShareResponse =
   | {
       status: 'success';
       commentId: string;
+      commentUrl?: string | undefined;
+    }
+  | {
+      status: 'uncertain';
+      error: string;
+      message: string;
+      commentId?: string | undefined;
       commentUrl?: string | undefined;
     }
   | {

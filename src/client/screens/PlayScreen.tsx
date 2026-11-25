@@ -58,7 +58,34 @@ export const PlayScreen = ({
         />
       </div>
 
-      {/* 3. Reset Button */}
+      {/* 3. Compact Tile Legend */}
+      <div
+        className="w-full flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-1 px-2.5 rounded bg-zinc-900/60 border border-zinc-800/80 text-[10px] tracking-tight text-zinc-400"
+        aria-label="Grid tile legend"
+      >
+        <span className="inline-flex items-center gap-1">
+          <strong className="text-amber-400">HQ</strong>
+          <span className="text-zinc-500">Start</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <strong className="text-cyan-400">D1–D3</strong>
+          <span className="text-zinc-500">Targets</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <strong className="text-amber-500">+2</strong>
+          <span className="text-zinc-500">Cost 2</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <strong className="text-emerald-400">⚡</strong>
+          <span className="text-zinc-500">+2 once</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <strong className="text-zinc-600">■</strong>
+          <span className="text-zinc-500">Wall</span>
+        </span>
+      </div>
+
+      {/* 4. Reset Button */}
       <div className="w-full flex items-center">
         <button
           type="button"
