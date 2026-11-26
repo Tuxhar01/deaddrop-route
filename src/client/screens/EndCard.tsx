@@ -4,12 +4,18 @@ import { context, showToast } from '@devvit/web/client';
 import { copyTextToClipboard } from './clipboard.ts';
 import type { ShareResponse } from '../../shared/types';
 import type { EndCardProps } from './endCardModel';
-import { getEndCardViewModel } from './endCardModel';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { getAttemptIdentityKey, getEndCardViewModel, resolveDispatchTextToCopy } from './endCardModel.ts';
 
 export type { EndCardProps };
 
 type ShareStatus = 'idle' | 'pending' | 'success' | 'error' | 'uncertain';
 type CopyStatus = 'idle' | 'copied' | 'error';
+
+type ServerShareRecord = {
+  attemptKey: string;
+  shareText: string;
+};
 
 export const EndCard = (props: EndCardProps) => {
   const {
@@ -21,11 +27,23 @@ export const EndCard = (props: EndCardProps) => {
     onShare,
   } = props;
 
-  const model = getEndCardViewModel(props);
+  const currentAttemptKey = getAttemptIdentityKey(props);
+  const [prevAttemptKey, setPrevAttemptKey] = useState(currentAttemptKey);
+  const [serverShare, setServerShare] = useState<ServerShareRecord | null>(null);
   const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRetryingConfirmation, setIsRetryingConfirmation] = useState(false);
+
+  // Invalidate any retained serverShareText or shareStatus if attempt identity changes
+  if (prevAttemptKey !== currentAttemptKey) {
+    setPrevAttemptKey(currentAttemptKey);
+    setShareStatus('idle');
+    setServerShare(null);
+    setErrorMessage(null);
+  }
+
+  const model = getEndCardViewModel(props);
 
   const handleRetryConfirmation = async () => {
     if (isRetryingConfirmation || !props.onRetryConfirmation) return;
@@ -40,9 +58,17 @@ export const EndCard = (props: EndCardProps) => {
   const handleCopyDispatch = async () => {
     if (copyStatus === 'copied') return;
 
+    const textToCopy = resolveDispatchTextToCopy({
+      currentAttemptKey,
+      serverShareText: serverShare?.shareText,
+      serverShareAttemptKey: serverShare?.attemptKey,
+      localSummary: model.dispatchSummary,
+    });
+    if (!textToCopy) return;
+
     if (props.onCopy) {
       try {
-        const ok = await props.onCopy();
+        const ok = await props.onCopy(textToCopy);
         if (ok) {
           setCopyStatus('copied');
           try {
@@ -57,9 +83,6 @@ export const EndCard = (props: EndCardProps) => {
         console.warn('[EndCard] onCopy prop failed:', err);
       }
     }
-
-    const textToCopy = model.dispatchSummary;
-    if (!textToCopy) return;
 
     const ok = await copyTextToClipboard(textToCopy);
     if (ok) {
@@ -119,11 +142,23 @@ export const EndCard = (props: EndCardProps) => {
       const data: ShareResponse = await res.json();
       if (res.ok && data.status === 'success') {
         setShareStatus('success');
+        if (data.shareText) {
+          setServerShare({
+            attemptKey: currentAttemptKey,
+            shareText: data.shareText,
+          });
+        }
       } else if (res.status === 409 && data.status === 'error' && data.error === 'already_shared') {
         setShareStatus('success');
       } else if (data.status === 'uncertain') {
         setShareStatus('uncertain');
         setErrorMessage(data.message);
+        if (data.shareText) {
+          setServerShare({
+            attemptKey: currentAttemptKey,
+            shareText: data.shareText,
+          });
+        }
       } else if (res.status === 409 && data.status === 'error' && data.error === 'share_in_progress') {
         setShareStatus('idle');
         setErrorMessage(data.message || 'Share in progress. Please wait a moment.');

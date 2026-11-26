@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
-import { getEndCardViewModel, renderStarGlyphs } from './endCardModel.ts';
+import { getAttemptIdentityKey, getEndCardViewModel, renderStarGlyphs, resolveDispatchTextToCopy } from './endCardModel.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { TRAFFIC_THRESHOLD } from '../../shared/constants.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
@@ -418,5 +418,161 @@ void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)',
     const res = await copyTextToClipboard('Test dispatch');
     assert.strictEqual(typeof res, 'boolean');
     assert.strictEqual(res, false);
+  });
+
+  void it('Phase 1 Correction: Copy before posting uses locally formatted confirmed summary', () => {
+    const props = {
+      won: true,
+      stars: 3 as const,
+      streak: 2,
+      dayIndex: 3,
+      movesUsed: 18,
+      par: 20,
+      sectorId: 'sector-04-neon-quarter',
+      confirmationStatus: 'confirmed' as const,
+    };
+    const model = getEndCardViewModel(props);
+    const currentAttemptKey = getAttemptIdentityKey(props);
+
+    // Before posting to Reddit: serverShareText is null
+    const textToCopy = resolveDispatchTextToCopy({
+      currentAttemptKey,
+      serverShareText: null,
+      serverShareAttemptKey: null,
+      localSummary: model.dispatchSummary,
+    });
+
+    assert.strictEqual(textToCopy, model.dispatchSummary);
+    assert.ok(textToCopy.includes('Night Shift Dispatch #4'));
+    assert.ok(textToCopy.includes('Sector 04: Neon Quarter'));
+    assert.ok(textToCopy.includes('18 / 20 (Par)'));
+  });
+
+  void it('Phase 1 Correction: Copy after successful posting prefers authoritative serverShareText', () => {
+    const props = {
+      won: true,
+      stars: 3 as const,
+      streak: 2,
+      dayIndex: 3,
+      movesUsed: 18,
+      par: 20,
+      sectorId: 'sector-04-neon-quarter',
+      confirmationStatus: 'confirmed' as const,
+    };
+    const model = getEndCardViewModel(props);
+    const currentAttemptKey = getAttemptIdentityKey(props);
+
+    const authoritativeServerText = [
+      '📦 **DeadDrop Route — Night Shift Dispatch #4**',
+      'Sector 04: Neon Quarter',
+      '',
+      '- **Status**: Route Delivered',
+      '- **Rating**: ★★★',
+      '- **Moves Used**: 18 / 20 (Par)',
+      '- **Courier Streak**: 2 days',
+      '',
+      'Can you beat tonight\'s par? Route your run in r/deaddrop_route.',
+    ].join('\n');
+
+    // After successful POST /api/share: serverShareText is returned and matches attempt key
+    const textToCopy = resolveDispatchTextToCopy({
+      currentAttemptKey,
+      serverShareText: authoritativeServerText,
+      serverShareAttemptKey: currentAttemptKey,
+      localSummary: model.dispatchSummary,
+    });
+
+    assert.strictEqual(textToCopy, authoritativeServerText);
+  });
+
+  void it('Phase 1 Correction: Stale share text is discarded when day or attempt identity changes', () => {
+    const day3Props = {
+      won: true,
+      stars: 3 as const,
+      streak: 2,
+      dayIndex: 3,
+      movesUsed: 18,
+      par: 20,
+      sectorId: 'sector-04-neon-quarter',
+      confirmationStatus: 'confirmed' as const,
+    };
+    const day3AttemptKey = getAttemptIdentityKey(day3Props);
+    const staleServerTextFromDay3 = 'Stale server text from day 3';
+
+    // Day rolls over to day 4
+    const day4Props = {
+      won: true,
+      stars: 2 as const,
+      streak: 3,
+      dayIndex: 4,
+      movesUsed: 19,
+      par: 19,
+      sectorId: 'sector-05-warehouse-row',
+      confirmationStatus: 'confirmed' as const,
+    };
+    const day4Model = getEndCardViewModel(day4Props);
+    const day4AttemptKey = getAttemptIdentityKey(day4Props);
+
+    // Verify keys differ
+    assert.notStrictEqual(day3AttemptKey, day4AttemptKey);
+
+    // Stale server text passed with day 3 attempt key must NOT be used for day 4
+    const textToCopy = resolveDispatchTextToCopy({
+      currentAttemptKey: day4AttemptKey,
+      serverShareText: staleServerTextFromDay3,
+      serverShareAttemptKey: day3AttemptKey,
+      localSummary: day4Model.dispatchSummary,
+    });
+
+    assert.strictEqual(textToCopy, day4Model.dispatchSummary);
+    assert.ok(!textToCopy.includes('Stale server text'));
+    assert.ok(textToCopy.includes('Night Shift Dispatch #5'));
+    assert.ok(textToCopy.includes('Sector 05: Warehouse Row'));
+
+    // Similarly test attempt identity change (e.g. movesUsed change)
+    const runBProps = {
+      ...day4Props,
+      movesUsed: 17,
+      stars: 3 as const,
+    };
+    const runBAttemptKey = getAttemptIdentityKey(runBProps);
+    assert.notStrictEqual(runBAttemptKey, day4AttemptKey);
+
+    const runBModel = getEndCardViewModel(runBProps);
+    const textToCopyRunB = resolveDispatchTextToCopy({
+      currentAttemptKey: runBAttemptKey,
+      serverShareText: 'Stale text from run A',
+      serverShareAttemptKey: day4AttemptKey,
+      localSummary: runBModel.dispatchSummary,
+    });
+
+    assert.strictEqual(textToCopyRunB, runBModel.dispatchSummary);
+    assert.ok(!textToCopyRunB.includes('Stale text'));
+  });
+
+  void it('Phase 1 Correction: copyTextToClipboard handles clipboard write rejection safely', async () => {
+    const originalDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    try {
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          clipboard: {
+            writeText: async () => {
+              throw new Error('NotAllowedError: Permissions policy denies clipboard-write');
+            },
+          },
+        },
+        configurable: true,
+        writable: true,
+      });
+
+      const res = await copyTextToClipboard('Test text');
+      assert.strictEqual(res, false, 'Should safely return false on writeText error');
+    } finally {
+      if (originalDesc) {
+        Object.defineProperty(globalThis, 'navigator', originalDesc);
+      } else {
+        Reflect.deleteProperty(globalThis, 'navigator');
+      }
+    }
   });
 });

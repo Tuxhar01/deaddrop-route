@@ -23,7 +23,7 @@ export type EndCardProps = {
   onRetryConfirmation?: (() => Promise<void> | void) | undefined;
   sectorId?: string | undefined;
   par?: number | undefined;
-  onCopy?: (() => Promise<boolean>) | undefined;
+  onCopy?: ((text?: string) => Promise<boolean> | boolean) | undefined;
 };
 
 export type EndCardViewModel = {
@@ -218,4 +218,39 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
     canCopyDispatch,
     dispatchSummary,
   };
+};
+
+export type AttemptIdentityProps = {
+  dayIndex?: number | undefined;
+  won?: boolean | undefined;
+  movesUsed?: number | undefined;
+  stars?: StarRating | undefined;
+  confirmationStatus?: 'confirmed' | 'pending' | 'rejected' | undefined;
+  attempt?: UserDailyAttempt | Record<string, unknown> | null | undefined;
+};
+
+export const getAttemptIdentityKey = (props: AttemptIdentityProps): string => {
+  const day = props.dayIndex ?? 0;
+  if (props.attempt && isValidAttemptRecord(props.attempt, day)) {
+    return `attempt:${day}:${props.attempt.outcome}:${props.attempt.movesUsed}:${props.attempt.stars}:${props.attempt.deliveredCount}`;
+  }
+  return `run:${day}:${props.won ? 'won' : 'lost'}:${props.movesUsed ?? 0}:${props.stars ?? 0}:${props.confirmationStatus ?? 'confirmed'}`;
+};
+
+export type ResolveCopyTextParams = {
+  currentAttemptKey: string;
+  serverShareText?: string | null | undefined;
+  serverShareAttemptKey?: string | null | undefined;
+  localSummary: string;
+};
+
+export const resolveDispatchTextToCopy = (params: ResolveCopyTextParams): string => {
+  if (
+    params.serverShareText &&
+    params.serverShareAttemptKey &&
+    params.serverShareAttemptKey === params.currentAttemptKey
+  ) {
+    return params.serverShareText;
+  }
+  return params.localSummary;
 };
