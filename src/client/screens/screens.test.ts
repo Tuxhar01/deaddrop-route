@@ -42,10 +42,10 @@ void describe('PRD Strict Screen Boundaries & Hygiene (Prompt 18)', () => {
     assert.ok(!splashContent.includes('Night Shift Courier'), 'Splash must NOT include old subtitle header');
   });
 
-  void it('PlayScreen HUD strictly contains Day, Moves, Parcels left, and Reset button (no timer, no hint)', () => {
+  void it('PlayScreen HUD strictly contains Day, Moves left, Parcels left, and Reset button (no timer, no hint)', () => {
     // Allowed HUD elements
     assert.ok(playScreenContent.includes('DAY'), 'PlayScreen must include DAY');
-    assert.ok(playScreenContent.includes('MOVES:'), 'PlayScreen must include MOVES');
+    assert.ok(playScreenContent.includes('MOVES LEFT:'), 'PlayScreen must include MOVES LEFT');
     assert.ok(playScreenContent.includes('parcelsLeft'), 'PlayScreen must include parcels left');
     assert.ok(playScreenContent.includes('RESET ROUTE'), 'PlayScreen must include RESET ROUTE button');
 
@@ -134,7 +134,21 @@ void describe('PRD Strict Screen Boundaries & Hygiene (Prompt 18)', () => {
     assert.ok(playScreenContent.includes('DAY #'), 'PlayScreen must render day number');
     assert.ok(playScreenContent.includes('sectorTitle'), 'PlayScreen must render sectorTitle');
     assert.ok(playScreenContent.includes('PAR:'), 'PlayScreen HUD must include PAR: label');
-    assert.ok(playScreenContent.includes('MOVES:'), 'PlayScreen HUD must include MOVES: label');
+    assert.ok(playScreenContent.includes('MOVES LEFT:'), 'PlayScreen HUD must include MOVES LEFT: label');
     assert.ok(playScreenContent.includes('parTarget'), 'PlayScreen must bind parTarget from map or prop');
+  });
+
+  void it('Phase 3: Reddit Feed Splash renders district radar preview, sector identity, and par target', () => {
+    assert.ok(splashContent.includes('DISPATCH #'), 'Splash must include DISPATCH # badge');
+    assert.ok(splashContent.includes('sectorTitle'), 'Splash must render sector title');
+    assert.ok(splashContent.includes('aria-label="District map preview"'), 'Splash must render accessible radar grid');
+    assert.ok(splashContent.includes('PAR TARGET:'), 'Splash must display par target');
+    assert.ok(splashContent.includes('motion-reduce:animate-none'), 'Splash radar must respect reduced motion');
+  });
+
+  void it('Phase 3: EndCard renders victory celebration banner and flourish with reduced-motion respect', () => {
+    assert.ok(endCardContent.includes('DISPATCH CONFIRMED'), 'EndCard must display DISPATCH CONFIRMED victory badge');
+    assert.ok(endCardContent.includes('isVictoryCelebration'), 'EndCard must bind victory flourish to isVictoryCelebration');
+    assert.ok(endCardContent.includes('motion-reduce:animate-none'), 'EndCard victory flourish must respect reduced motion');
   });
 });

@@ -42,6 +42,7 @@ export type EndCardViewModel = {
   sectorTitle: string;
   canCopyDispatch: boolean;
   dispatchSummary: string;
+  isVictoryCelebration: boolean;
 };
 
 export const isValidAttemptRecord = (
@@ -103,6 +104,13 @@ export const renderStarGlyphs = (stars: StarRating, won: boolean): string => {
   }
 };
 
+export const isVictoryCelebrationEligible = (
+  isWon: boolean,
+  confirmationStatus: 'confirmed' | 'pending' | 'rejected'
+): boolean => {
+  return isWon && confirmationStatus === 'confirmed';
+};
+
 export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
   const {
     streak,
@@ -138,6 +146,7 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       sectorTitle: formatSectorName(props.sectorId),
       canCopyDispatch: false,
       dispatchSummary: '',
+      isVictoryCelebration: false,
     };
   }
 
@@ -162,6 +171,7 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       sectorTitle: formatSectorName(props.sectorId),
       canCopyDispatch: false,
       dispatchSummary: '',
+      isVictoryCelebration: false,
     };
   }
 
@@ -198,6 +208,8 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       })
     : '';
 
+  const isVictoryCelebration = isVictoryCelebrationEligible(effectiveWon, confirmationStatus);
+
   return {
     resultHeading,
     isWon: effectiveWon,
@@ -217,6 +229,7 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
     sectorTitle,
     canCopyDispatch,
     dispatchSummary,
+    isVictoryCelebration,
   };
 };
 

@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
-import { getAttemptIdentityKey, getEndCardViewModel, renderStarGlyphs, resolveDispatchTextToCopy } from './endCardModel.ts';
+import { getAttemptIdentityKey, getEndCardViewModel, isVictoryCelebrationEligible, renderStarGlyphs, resolveDispatchTextToCopy } from './endCardModel.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { TRAFFIC_THRESHOLD } from '../../shared/constants.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
@@ -574,5 +574,69 @@ void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)',
         Reflect.deleteProperty(globalThis, 'navigator');
       }
     }
+  });
+
+  void it('Phase 3: isVictoryCelebrationEligible strictly gates victory animations to confirmed wins', () => {
+    // Only won + confirmed is eligible
+    assert.strictEqual(isVictoryCelebrationEligible(true, 'confirmed'), true);
+
+    // Any pending or rejected state is strictly ineligible
+    assert.strictEqual(isVictoryCelebrationEligible(true, 'pending'), false);
+    assert.strictEqual(isVictoryCelebrationEligible(true, 'rejected'), false);
+
+    // Any lost run is strictly ineligible regardless of confirmation
+    assert.strictEqual(isVictoryCelebrationEligible(false, 'confirmed'), false);
+    assert.strictEqual(isVictoryCelebrationEligible(false, 'pending'), false);
+    assert.strictEqual(isVictoryCelebrationEligible(false, 'rejected'), false);
+  });
+
+  void it('Phase 3: getEndCardViewModel reflects victory celebration only on confirmed wins', () => {
+    const confirmedWin = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 5,
+      confirmationStatus: 'confirmed',
+      movesUsed: 18,
+      par: 20,
+    });
+    assert.strictEqual(confirmedWin.isVictoryCelebration, true);
+
+    const pendingWin = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 5,
+      confirmationStatus: 'pending',
+      movesUsed: 18,
+      par: 20,
+    });
+    assert.strictEqual(pendingWin.isVictoryCelebration, false);
+
+    const rejectedWin = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 5,
+      confirmationStatus: 'rejected',
+      movesUsed: 18,
+      par: 20,
+    });
+    assert.strictEqual(rejectedWin.isVictoryCelebration, false);
+
+    const confirmedLoss = getEndCardViewModel({
+      won: false,
+      stars: 0,
+      streak: 0,
+      confirmationStatus: 'confirmed',
+      movesUsed: 25,
+      par: 20,
+    });
+    assert.strictEqual(confirmedLoss.isVictoryCelebration, false);
+
+    const alreadyDispatched = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+      alreadyDispatched: true,
+    });
+    assert.strictEqual(alreadyDispatched.isVictoryCelebration, false);
   });
 });

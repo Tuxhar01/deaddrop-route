@@ -178,9 +178,22 @@ export const EndCard = (props: EndCardProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-[340px] sm:max-w-[360px] mx-auto p-4 sm:p-5 rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-2xl backdrop-blur-sm select-none font-mono text-center space-y-3.5">
+    <div
+      className={`flex flex-col items-center justify-center w-full max-w-[340px] sm:max-w-[360px] mx-auto p-4 sm:p-5 rounded-xl bg-zinc-900/95 shadow-2xl backdrop-blur-sm select-none font-mono text-center space-y-3.5 ${
+        model.isVictoryCelebration
+          ? 'border border-emerald-500/50 shadow-emerald-950/20'
+          : 'border border-zinc-800'
+      }`}
+    >
       {/* 1. Result (Win/Loss) */}
-      <div className="space-y-0.5">
+      <div className="space-y-1">
+        {model.isVictoryCelebration && (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-[10px] font-black text-emerald-400 uppercase tracking-widest motion-safe:animate-pulse motion-reduce:animate-none">
+            <span>★</span>
+            <span>DISPATCH CONFIRMED</span>
+            <span>★</span>
+          </div>
+        )}
         <div
           className={`text-xl sm:text-2xl font-black uppercase tracking-tight ${
             model.resultHeading === 'ALREADY DISPATCHED'
@@ -203,7 +216,13 @@ export const EndCard = (props: EndCardProps) => {
 
       {/* 2. Stars */}
       {model.starsGlyphs ? (
-        <div className="text-3xl text-amber-400 font-bold tracking-widest py-0.5">
+        <div
+          className={`text-3xl text-amber-400 font-bold tracking-widest py-0.5 transition-transform ${
+            model.isVictoryCelebration
+              ? 'scale-105 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]'
+              : ''
+          }`}
+        >
           {model.starsGlyphs}
         </div>
       ) : null}

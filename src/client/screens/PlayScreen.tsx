@@ -46,7 +46,7 @@ export const PlayScreen = ({
       {/* 2. Compact HUD (Moves left, Par target, Parcels left) */}
       <header className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-zinc-900/95 border border-zinc-800 text-xs tracking-wider shadow-md">
         <div className="flex items-center gap-1 font-bold">
-          <span className="text-zinc-500">MOVES:</span>
+          <span className="text-zinc-500">MOVES LEFT:</span>
           <span
             className={
               runState.movesLeft <= 3
