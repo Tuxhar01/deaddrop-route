@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
-import type { Coordinate, Direction, GameMap, RunState, TileType } from '../../shared/types';
+import type { Coordinate, Direction, GameMap, RunState } from '../../shared/types';
 import { getDirectionBetweenCoordinates } from '../hooks/useRun';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { getTileVisuals } from './boardVisuals.ts';
 
 export type BoardProps = {
   map: GameMap;
@@ -8,73 +10,6 @@ export type BoardProps = {
   onStep?: (direction: Direction) => void;
   onMoveToCoordinate?: (coord: Coordinate) => void;
   disabled?: boolean;
-};
-
-const getTileVisuals = (
-  tile: TileType,
-  isDepot: boolean,
-  isDrop: boolean,
-  isDelivered: boolean,
-  dropNumber: number | null,
-  isRelayUsed: boolean
-) => {
-  if (isDrop) {
-    if (isDelivered) {
-      return {
-        bg: 'bg-emerald-950/40 border-emerald-500/50 text-emerald-400',
-        badge: '✓',
-        label: `DROP #${dropNumber ?? ''} DELIVERED`,
-      };
-    }
-    return {
-      bg: 'bg-cyan-950/60 border-cyan-400/80 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)] animate-pulse',
-      badge: `D${dropNumber ?? ''}`,
-      label: `PARCEL #${dropNumber ?? ''} TARGET`,
-    };
-  }
-
-  if (isDepot) {
-    return {
-      bg: 'bg-amber-950/40 border-amber-500/60 text-amber-400',
-      badge: 'HQ',
-      label: 'DISPATCH DEPOT',
-    };
-  }
-
-  switch (tile) {
-    case 'block':
-      return {
-        bg: 'bg-zinc-950 border-zinc-900 text-zinc-700',
-        badge: '■',
-        label: 'BLOCKED GRID',
-      };
-    case 'congested':
-      return {
-        bg: 'bg-amber-950/30 border-amber-600/50 text-amber-500',
-        badge: '+2',
-        label: 'CONGESTION (+2 COST)',
-      };
-    case 'relay':
-      if (isRelayUsed) {
-        return {
-          bg: 'bg-zinc-900/60 border-zinc-800 text-zinc-600',
-          badge: '○',
-          label: 'RELAY EXHAUSTED',
-        };
-      }
-      return {
-        bg: 'bg-emerald-950/60 border-emerald-400/80 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]',
-        badge: '⚡',
-        label: 'RELAY (+2 BOOST)',
-      };
-    case 'road':
-    default:
-      return {
-        bg: 'bg-zinc-900/50 border-zinc-800/80 text-zinc-500 hover:border-zinc-700',
-        badge: '·',
-        label: 'CLEAR ROADWAY',
-      };
-  }
 };
 
 export const Board = ({
@@ -153,6 +88,13 @@ export const Board = ({
     return -1;
   };
 
+  // Map of visited tile counts from authoritative local run history
+  const visitedCounts = new Map<string, number>();
+  for (const pos of runState.history) {
+    const k = `${pos.x},${pos.y}`;
+    visitedCounts.set(k, (visitedCounts.get(k) ?? 0) + 1);
+  }
+
   return (
     <div className="w-full flex flex-col items-center select-none font-mono">
       {/* 7x7 Grid Container - responsive sizing so it fits cleanly on short viewports & 375px mobile */}
@@ -171,6 +113,10 @@ export const Board = ({
               const isDelivered = isDrop && runState.deliveredIndices.includes(dropIndex);
               const isRelayUsed = tile === 'relay' && runState.usedRelayKeys.includes(`${x},${y}`);
 
+              const cellKey = `${x},${y}`;
+              const visitCount = visitedCounts.get(cellKey) ?? 0;
+              const isVisited = visitCount > 0;
+
               const isAdjacent =
                 Math.abs(runState.currentPosition.x - x) +
                   Math.abs(runState.currentPosition.y - y) ===
@@ -186,7 +132,8 @@ export const Board = ({
                 isDrop,
                 isDelivered,
                 dropIndex >= 0 ? dropIndex + 1 : null,
-                isRelayUsed
+                isRelayUsed,
+                isVisited
               );
 
               return (
@@ -195,7 +142,7 @@ export const Board = ({
                   type="button"
                   onClick={() => handleCellClick(x, y)}
                   disabled={!isLegalMove}
-                  aria-label={`Tile at column ${x + 1}, row ${y + 1}: ${visuals.label}${isCourier ? ' (COURIER PRESENT)' : ''}${isLegalMove ? ' (LEGAL MOVE)' : ''}`}
+                  aria-label={`Tile at column ${x + 1}, row ${y + 1}: ${visuals.label}${isVisited ? ' (VISITED)' : ''}${isCourier ? ' (COURIER PRESENT)' : ''}${isLegalMove ? ' (LEGAL MOVE)' : ''}`}
                   className={`
                     relative flex flex-col items-center justify-center rounded border transition-all duration-150
                     text-[10px] sm:text-xs font-bold
@@ -208,12 +155,29 @@ export const Board = ({
                     ${isCourier ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-zinc-950 z-20 shadow-lg shadow-amber-500/30' : ''}
                   `}
                 >
-                  {/* Courier presence indicator */}
+                  {/* Courier presence indicator (Highest precedence) */}
                   {isCourier ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-amber-500 text-zinc-950 font-black rounded z-20 animate-in fade-in zoom-in-75 duration-100">
                       <span className="text-[11px] sm:text-xs tracking-tighter">VAN</span>
                     </div>
+                  ) : tile === 'road' && isVisited ? (
+                    /* Visited road breadcrumb with intersection counter */
+                    <div className="flex flex-col items-center justify-center leading-none">
+                      <span
+                        className={`rounded-full transition-all ${
+                          visitCount > 1
+                            ? 'w-2 h-2 bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)] ring-1 ring-amber-300'
+                            : 'w-1.5 h-1.5 bg-amber-400/80 shadow-[0_0_4px_rgba(251,191,36,0.3)]'
+                        }`}
+                      />
+                      {visitCount > 1 && (
+                        <span className="text-[7px] text-amber-300 font-bold leading-none mt-0.5 tracking-tighter">
+                          ×{visitCount}
+                        </span>
+                      )}
+                    </div>
                   ) : (
+                    /* Standard tile badge and target indicators */
                     <>
                       <span className="leading-none">{visuals.badge}</span>
                       {isDrop && (

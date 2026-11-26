@@ -1,11 +1,27 @@
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { formatSectorName } from '../../shared/format.ts';
+
 export type StartScreenProps = {
   date: string;
   streak: number;
   onPlay: () => void;
   hasAttempt?: boolean | undefined;
+  dayIndex?: number | undefined;
+  sectorId?: string | undefined;
+  sectorName?: string | undefined;
 };
 
-export const StartScreen = ({ date, streak, onPlay, hasAttempt }: StartScreenProps) => {
+export const StartScreen = ({
+  date,
+  streak,
+  onPlay,
+  hasAttempt,
+  dayIndex,
+  sectorId,
+  sectorName,
+}: StartScreenProps) => {
+  const sectorTitle = sectorName ?? formatSectorName(sectorId);
+
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-[340px] sm:max-w-[360px] mx-auto p-4 sm:p-5 rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-2xl backdrop-blur-sm select-none font-mono text-center space-y-4">
       {/* 1. Title */}
@@ -13,9 +29,14 @@ export const StartScreen = ({ date, streak, onPlay, hasAttempt }: StartScreenPro
         Dead Drop Route
       </h1>
 
-      {/* 2. Today's Date & UTC Reset */}
-      <div className="space-y-0.5">
-        <div className="text-xs font-semibold text-amber-400 tracking-wider">
+      {/* 2. Today's Sector, Date & UTC Reset */}
+      <div className="space-y-1">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-950/40 border border-amber-500/30 text-amber-400 text-xs font-bold tracking-wider">
+          <span>{dayIndex !== undefined ? `DISPATCH #${dayIndex + 1}` : 'NIGHT SHIFT'}</span>
+          <span className="text-amber-500/50">•</span>
+          <span className="text-zinc-200">{sectorTitle}</span>
+        </div>
+        <div className="text-xs font-semibold text-zinc-400 tracking-wider">
           {date}
         </div>
         <div className="text-[10px] text-zinc-500 tracking-wider">

@@ -1,5 +1,7 @@
 import { Board } from '../components/Board';
 import type { Coordinate, Direction, GameMap, RunState } from '../../shared/types';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { formatSectorName } from '../../shared/format.ts';
 
 export type PlayScreenProps = {
   dayIndex: number;
@@ -9,6 +11,8 @@ export type PlayScreenProps = {
   onMoveToCoordinate: (coord: Coordinate) => void;
   onReset: () => void;
   disabled?: boolean;
+  par?: number | undefined;
+  sectorName?: string | undefined;
 };
 
 export const PlayScreen = ({
@@ -19,17 +23,28 @@ export const PlayScreen = ({
   onMoveToCoordinate,
   onReset,
   disabled = false,
+  par,
+  sectorName,
 }: PlayScreenProps) => {
   const parcelsLeft = 3 - runState.deliveredIndices.length;
+  const sectorTitle = sectorName ?? formatSectorName(map.id);
+  const parTarget = par ?? map.par ?? 20;
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-[340px] sm:max-w-[360px] mx-auto p-1 sm:p-2 space-y-2.5 select-none font-mono">
-      {/* 1. Compact HUD (Day, Moves left, Parcels left) */}
-      <header className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-zinc-900/95 border border-zinc-800 text-xs tracking-wider">
-        <div className="flex items-center gap-1 font-bold">
-          <span className="text-zinc-500">DAY</span>
-          <span className="text-amber-400">#{dayIndex + 1}</span>
+    <div className="flex flex-col items-center justify-center w-full max-w-[340px] sm:max-w-[360px] mx-auto p-1 sm:p-2 space-y-2 select-none font-mono">
+      {/* 1. Sector Identity Header */}
+      <div className="w-full flex items-center justify-between px-2 text-[10px] sm:text-xs font-bold tracking-wider">
+        <div className="flex items-center gap-1.5">
+          <span className="text-amber-400 font-black">DAY #{dayIndex + 1}</span>
+          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-300 truncate max-w-[190px]" title={sectorTitle}>
+            {sectorTitle}
+          </span>
         </div>
+      </div>
+
+      {/* 2. Compact HUD (Moves left, Par target, Parcels left) */}
+      <header className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-zinc-900/95 border border-zinc-800 text-xs tracking-wider shadow-md">
         <div className="flex items-center gap-1 font-bold">
           <span className="text-zinc-500">MOVES:</span>
           <span
@@ -41,6 +56,10 @@ export const PlayScreen = ({
           >
             {runState.movesLeft}
           </span>
+        </div>
+        <div className="flex items-center gap-1 font-bold">
+          <span className="text-zinc-500">PAR:</span>
+          <span className="text-amber-300 font-semibold">{parTarget}</span>
         </div>
         <div className="flex items-center gap-1 font-bold">
           <span className="text-cyan-400">{parcelsLeft} LEFT</span>

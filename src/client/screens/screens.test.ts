@@ -123,4 +123,18 @@ void describe('PRD Strict Screen Boundaries & Hygiene (Prompt 18)', () => {
     assert.ok(!boardContent.includes('isClickable'), 'Redundant isClickable must be eliminated');
     assert.ok(!boardContent.includes('disabled={isInputLocked || !isAdjacent}'), 'Outdated disabled={isInputLocked || !isAdjacent} must not exist');
   });
+
+  void it('Phase 2: StartScreen renders sector identity and dispatch number', () => {
+    assert.ok(startScreenContent.includes('formatSectorName'), 'StartScreen must use formatSectorName');
+    assert.ok(startScreenContent.includes('DISPATCH #'), 'StartScreen must include DISPATCH # badge');
+    assert.ok(startScreenContent.includes('sectorTitle'), 'StartScreen must render sectorTitle');
+  });
+
+  void it('Phase 2: PlayScreen displays sector identity, verified par target, and moves budget distinctly', () => {
+    assert.ok(playScreenContent.includes('DAY #'), 'PlayScreen must render day number');
+    assert.ok(playScreenContent.includes('sectorTitle'), 'PlayScreen must render sectorTitle');
+    assert.ok(playScreenContent.includes('PAR:'), 'PlayScreen HUD must include PAR: label');
+    assert.ok(playScreenContent.includes('MOVES:'), 'PlayScreen HUD must include MOVES: label');
+    assert.ok(playScreenContent.includes('parTarget'), 'PlayScreen must bind parTarget from map or prop');
+  });
 });

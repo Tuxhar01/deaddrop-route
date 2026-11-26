@@ -176,6 +176,8 @@ export const App = () => {
         <StartScreen
           date={dailyData.date}
           streak={dailyData.streak}
+          dayIndex={dailyData.dayIndex}
+          sectorId={dailyData.map.id}
           hasAttempt={Boolean(dailyData.attempt || dailyData.alreadyCompleted)}
           onPlay={handlePlayOrViewResult}
         />
@@ -185,6 +187,7 @@ export const App = () => {
         <PlayScreen
           dayIndex={dailyData.dayIndex}
           map={dailyData.map}
+          par={dailyData.par}
           runState={run.state}
           onStep={run.step}
           onMoveToCoordinate={run.moveToCoordinate}

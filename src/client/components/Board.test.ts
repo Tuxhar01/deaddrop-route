@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { getDailyMap } from '../../shared/dates.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { getTileVisuals } from './boardVisuals.ts';
 import type { Coordinate, TileType } from '../../shared/types.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -205,5 +207,64 @@ void describe('Task 5B.1 — Board Tile Button Disabled Behavior & Interaction C
         `Unexpected enabled coordinate (${coord.x}, ${coord.y})`
       );
     }
+  });
+
+  void it('Phase 2: getTileVisuals distinguishes unvisited and visited road tiles cleanly', () => {
+    // Unvisited road
+    const unvisitedRoad = getTileVisuals('road', false, false, false, null, false, false);
+    assert.strictEqual(unvisitedRoad.badge, '·');
+    assert.strictEqual(unvisitedRoad.label, 'CLEAR ROADWAY');
+    assert.ok(unvisitedRoad.bg.includes('bg-zinc-900/50'));
+
+    // Visited road
+    const visitedRoad = getTileVisuals('road', false, false, false, null, false, true);
+    assert.strictEqual(visitedRoad.badge, '·');
+    assert.strictEqual(visitedRoad.label, 'VISITED ROADWAY');
+    assert.ok(visitedRoad.bg.includes('bg-amber-950/20 border-amber-500/30'));
+  });
+
+  void it('Phase 2: Important tile precedence ensures essential symbols are never overwritten by visited trail', () => {
+    // Drop target (unvisited and visited): badge remains D1 or ✓
+    const dropUndelivered = getTileVisuals('road', false, true, false, 1, false, true);
+    assert.strictEqual(dropUndelivered.badge, 'D1');
+    assert.ok(dropUndelivered.label.includes('PARCEL #1 TARGET'));
+
+    const dropDelivered = getTileVisuals('road', false, true, true, 1, false, true);
+    assert.strictEqual(dropDelivered.badge, '✓');
+    assert.ok(dropDelivered.label.includes('DELIVERED'));
+
+    // Relay tile (unvisited and visited): badge remains ⚡ or ○
+    const relayFresh = getTileVisuals('relay', false, false, false, null, false, true);
+    assert.strictEqual(relayFresh.badge, '⚡');
+    assert.ok(relayFresh.label.includes('RELAY (+2 BOOST)'));
+
+    const relayExhausted = getTileVisuals('relay', false, false, false, null, true, true);
+    assert.strictEqual(relayExhausted.badge, '○');
+    assert.ok(relayExhausted.label.includes('RELAY EXHAUSTED'));
+
+    // Depot: retains HQ badge even when visited
+    const depot = getTileVisuals('road', true, false, false, null, false, true);
+    assert.strictEqual(depot.badge, 'HQ');
+    assert.strictEqual(depot.label, 'DISPATCH DEPOT');
+
+    // Congested: retains +2 cost badge even when visited
+    const congested = getTileVisuals('congested', false, false, false, null, false, true);
+    assert.strictEqual(congested.badge, '+2');
+    assert.strictEqual(congested.label, 'CONGESTION (+2 COST)');
+
+    // Block: retains ■ and blocked label
+    const block = getTileVisuals('block', false, false, false, null, false, false);
+    assert.strictEqual(block.badge, '■');
+    assert.strictEqual(block.label, 'BLOCKED GRID');
+  });
+
+  void it('Phase 2: Board.tsx implements route history tracking and intersection count without leaking solutions', () => {
+    assert.ok(boardSource.includes('visitedCounts'), 'Board must track visitedCounts from history');
+    assert.ok(boardSource.includes('runState.history'), 'Board must use authoritative local run history');
+    assert.ok(boardSource.includes('visitCount > 1'), 'Board must distinguish multiple visits / intersections');
+    assert.ok(boardSource.includes('VAN'), 'Courier presence overlay VAN must have top precedence');
+    // Ensure no solution or optimal solver leakage
+    assert.ok(!boardSource.includes('solveMap'), 'Board must not reference solver');
+    assert.ok(!boardSource.includes('optimalPath'), 'Board must not reference optimalPath');
   });
 });
