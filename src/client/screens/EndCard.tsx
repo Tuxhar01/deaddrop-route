@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { context } from '@devvit/web/client';
+import { context, showToast } from '@devvit/web/client';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { copyTextToClipboard } from './clipboard.ts';
 import type { ShareResponse } from '../../shared/types';
 import type { EndCardProps } from './endCardModel';
 import { getEndCardViewModel } from './endCardModel';
@@ -7,6 +9,7 @@ import { getEndCardViewModel } from './endCardModel';
 export type { EndCardProps };
 
 type ShareStatus = 'idle' | 'pending' | 'success' | 'error' | 'uncertain';
+type CopyStatus = 'idle' | 'copied' | 'error';
 
 export const EndCard = (props: EndCardProps) => {
   const {
@@ -20,6 +23,7 @@ export const EndCard = (props: EndCardProps) => {
 
   const model = getEndCardViewModel(props);
   const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRetryingConfirmation, setIsRetryingConfirmation] = useState(false);
 
@@ -30,6 +34,50 @@ export const EndCard = (props: EndCardProps) => {
       await props.onRetryConfirmation();
     } finally {
       setIsRetryingConfirmation(false);
+    }
+  };
+
+  const handleCopyDispatch = async () => {
+    if (copyStatus === 'copied') return;
+
+    if (props.onCopy) {
+      try {
+        const ok = await props.onCopy();
+        if (ok) {
+          setCopyStatus('copied');
+          try {
+            showToast({ text: 'Dispatch copied to clipboard!' });
+          } catch {
+            // Outside Devvit parent window
+          }
+          setTimeout(() => setCopyStatus('idle'), 2500);
+          return;
+        }
+      } catch (err) {
+        console.warn('[EndCard] onCopy prop failed:', err);
+      }
+    }
+
+    const textToCopy = model.dispatchSummary;
+    if (!textToCopy) return;
+
+    const ok = await copyTextToClipboard(textToCopy);
+    if (ok) {
+      setCopyStatus('copied');
+      try {
+        showToast({ text: 'Dispatch copied to clipboard!' });
+      } catch {
+        // Outside Devvit parent window
+      }
+      setTimeout(() => setCopyStatus('idle'), 2500);
+    } else {
+      setCopyStatus('error');
+      try {
+        showToast({ text: "Couldn't copy to clipboard." });
+      } catch {
+        // Outside Devvit parent window
+      }
+      setTimeout(() => setCopyStatus('idle'), 3000);
     }
   };
 
@@ -219,6 +267,33 @@ export const EndCard = (props: EndCardProps) => {
                     ? 'POSTING DISPATCH...'
                     : 'LOG ROUTE TO DISPATCH'}
           </button>
+
+          {/* Copy Dispatch to Clipboard Button */}
+          {model.canCopyDispatch && (
+            <button
+              type="button"
+              onClick={handleCopyDispatch}
+              disabled={copyStatus === 'copied'}
+              aria-label="Copy dispatch summary to clipboard"
+              className={`
+                w-full min-h-[44px] py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider transition-all
+                flex items-center justify-center cursor-pointer shadow-md
+                ${
+                  copyStatus === 'copied'
+                    ? 'bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 cursor-default'
+                    : copyStatus === 'error'
+                      ? 'bg-rose-950/30 border border-rose-500/50 text-rose-300 hover:bg-rose-900/40'
+                      : 'bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-950 border border-zinc-700/80 text-zinc-300 hover:text-white'
+                }
+              `}
+            >
+              {copyStatus === 'copied'
+                ? 'DISPATCH COPIED ✓'
+                : copyStatus === 'error'
+                  ? 'FAILED TO COPY'
+                  : 'COPY DISPATCH'}
+            </button>
+          )}
 
           {errorMessage && shareStatus !== 'success' && (
             <p

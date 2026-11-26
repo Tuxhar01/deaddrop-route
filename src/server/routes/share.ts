@@ -7,6 +7,8 @@ import { getCanonicalUserId } from '../auth.ts';
 import { isValidAttemptRecord, type RedisClientLike } from '../services/stats.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { getUtcDayIndex } from '../../shared/dates.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { formatDispatchSummary } from '../../shared/format.ts';
 
 export const isT3Id = (val: string): val is `t3_${string}` => {
   return val.startsWith('t3_');
@@ -35,29 +37,13 @@ export const toStarRating = (val: number): StarRating => {
 };
 
 export const formatShareComment = (params: ShareSubmission): string => {
-  const { dayIndex = 0, won = false, movesUsed = 0, stars = 0, streak = 0 } = params;
-  const starGlyphs = won
-    ? stars === 3
-      ? '★★★'
-      : stars === 2
-        ? '★★☆'
-        : stars === 1
-          ? '★☆☆'
-          : '☆☆☆'
-    : '☆☆☆';
-  const statusText = won ? 'Route Delivered' : 'Out of Moves';
-  const streakText = `${streak} ${streak === 1 ? 'day' : 'days'}`;
-
-  return [
-    `📦 **DeadDrop Route — Night Shift Dispatch #${dayIndex + 1}**`,
-    '',
-    `- **Status**: ${statusText}`,
-    `- **Rating**: ${starGlyphs}`,
-    `- **Moves Used**: ${movesUsed}`,
-    `- **Courier Streak**: ${streakText}`,
-    '',
-    `*Dispatched via DeadDrop Route*`,
-  ].join('\n');
+  return formatDispatchSummary({
+    dayIndex: params.dayIndex ?? 0,
+    won: params.won ?? false,
+    movesUsed: params.movesUsed ?? 0,
+    stars: params.stars ?? 0,
+    streak: params.streak ?? 0,
+  });
 };
 
 export type RedditClientForShare = {
@@ -381,6 +367,8 @@ export const createShareRoute = (defaultDeps: ShareDependencies = {}) => {
       streak,
     };
 
+    const commentText = formatShareComment(verifiedSubmission);
+
     try {
       let comment: { id: string; url?: string | undefined };
       try {
@@ -452,6 +440,7 @@ export const createShareRoute = (defaultDeps: ShareDependencies = {}) => {
               'Comment posted to Reddit, but the dispatch record could not be saved. Check the Reddit post before attempting to share again.',
             commentId: comment.id,
             ...(comment.url !== undefined ? { commentUrl: comment.url } : {}),
+            shareText: commentText,
           },
           500
         );
@@ -461,6 +450,7 @@ export const createShareRoute = (defaultDeps: ShareDependencies = {}) => {
         status: 'success',
         commentId: comment.id,
         ...(comment.url !== undefined ? { commentUrl: comment.url } : {}),
+        shareText: commentText,
       });
     } finally {
       // Safely release the in-flight lock only if still owned by this request

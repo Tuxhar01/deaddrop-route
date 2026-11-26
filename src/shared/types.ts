@@ -153,6 +153,7 @@ export type ShareResponse =
       status: 'success';
       commentId: string;
       commentUrl?: string | undefined;
+      shareText?: string | undefined;
     }
   | {
       status: 'uncertain';
@@ -160,6 +161,7 @@ export type ShareResponse =
       message: string;
       commentId?: string | undefined;
       commentUrl?: string | undefined;
+      shareText?: string | undefined;
     }
   | {
       status: 'error';

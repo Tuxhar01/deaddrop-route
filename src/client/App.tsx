@@ -208,6 +208,8 @@ export const App = () => {
           onRetryConfirmation={async () => {
             await controller.submitRun(true);
           }}
+          sectorId={dailyData.map.id}
+          par={dailyData.par}
         />
       )}
     </main>

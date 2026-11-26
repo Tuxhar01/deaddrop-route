@@ -1,5 +1,9 @@
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { TRAFFIC_THRESHOLD } from '../../shared/constants.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { formatDispatchSummary, formatSectorName } from '../../shared/format.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { isClipboardSupported } from './clipboard.ts';
 import type { StarRating, UserDailyAttempt } from '../../shared/types';
 
 export type EndCardProps = {
@@ -17,6 +21,9 @@ export type EndCardProps = {
   confirmationStatus?: 'confirmed' | 'pending' | 'rejected' | undefined;
   confirmationError?: string | null | undefined;
   onRetryConfirmation?: (() => Promise<void> | void) | undefined;
+  sectorId?: string | undefined;
+  par?: number | undefined;
+  onCopy?: (() => Promise<boolean>) | undefined;
 };
 
 export type EndCardViewModel = {
@@ -32,6 +39,9 @@ export type EndCardViewModel = {
   confirmationStatus: 'confirmed' | 'pending' | 'rejected';
   confirmationNotice?: string | undefined;
   showRetryConfirmation: boolean;
+  sectorTitle: string;
+  canCopyDispatch: boolean;
+  dispatchSummary: string;
 };
 
 export const isValidAttemptRecord = (
@@ -125,6 +135,9 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       confirmationStatus: 'rejected',
       confirmationNotice: confirmationError || 'Run rejected by server.',
       showRetryConfirmation: false,
+      sectorTitle: formatSectorName(props.sectorId),
+      canCopyDispatch: false,
+      dispatchSummary: '',
     };
   }
 
@@ -146,6 +159,9 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
       confirmationStatus,
       confirmationNotice: undefined,
       showRetryConfirmation: false,
+      sectorTitle: formatSectorName(props.sectorId),
+      canCopyDispatch: false,
+      dispatchSummary: '',
     };
   }
 
@@ -168,6 +184,19 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
 
   const resultHeading = effectiveWon ? 'ROUTE DELIVERED' : 'OUT OF MOVES';
   const starsGlyphs = renderStarGlyphs(effectiveStars, effectiveWon);
+  const sectorTitle = formatSectorName(props.sectorId);
+  const canCopyDispatch = showShareButton && isClipboardSupported();
+  const dispatchSummary = showShareButton
+    ? formatDispatchSummary({
+        dayIndex: props.dayIndex ?? 0,
+        sectorId: props.sectorId,
+        won: effectiveWon,
+        movesUsed: effectiveMovesUsed ?? 0,
+        par: props.par,
+        stars: effectiveStars,
+        streak,
+      })
+    : '';
 
   return {
     resultHeading,
@@ -185,5 +214,8 @@ export const getEndCardViewModel = (props: EndCardProps): EndCardViewModel => {
         ? (confirmationError || 'Dispatch unconfirmed. Tap retry to save your run.')
         : undefined,
     showRetryConfirmation,
+    sectorTitle,
+    canCopyDispatch,
+    dispatchSummary,
   };
 };

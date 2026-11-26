@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { getEndCardViewModel, renderStarGlyphs } from './endCardModel.ts';
 // @ts-expect-error - Node --experimental-strip-types requires .ts extension
 import { TRAFFIC_THRESHOLD } from '../../shared/constants.ts';
+// @ts-expect-error - Node --experimental-strip-types requires .ts extension
+import { isClipboardSupported, copyTextToClipboard } from './clipboard.ts';
 
 void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)', () => {
   void it('TRAFFIC_THRESHOLD is strictly 5 per specification', () => {
@@ -333,5 +335,88 @@ void describe('EndCard Model & Traffic Display Logic (Prompt 18 PRD Alignment)',
     assert.strictEqual(confirmedModel.showShareButton, true, 'Sharing enabled upon server confirmation');
     assert.strictEqual(confirmedModel.showRetryConfirmation, false);
     assert.strictEqual(confirmedModel.resultHeading, 'ROUTE DELIVERED');
+  });
+
+  void it('Phase 1: sectorTitle formats sectorId or defaults to Classified Sector', () => {
+    const modelWithSector = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+      sectorId: 'sector-04-neon-quarter',
+    });
+    assert.strictEqual(modelWithSector.sectorTitle, 'Sector 04: Neon Quarter');
+
+    const modelNoSector = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+    });
+    assert.strictEqual(modelNoSector.sectorTitle, 'Classified Sector');
+  });
+
+  void it('Phase 1: dispatchSummary is generated on confirmed runs and empty when sharing is disabled', () => {
+    const confirmedModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 4,
+      movesUsed: 15,
+      par: 18,
+      dayIndex: 2,
+      sectorId: 'sector-03-cyber-docks',
+      confirmationStatus: 'confirmed',
+    });
+    assert.strictEqual(confirmedModel.showShareButton, true);
+    assert.ok(confirmedModel.dispatchSummary.length > 0, 'dispatchSummary should be populated');
+    assert.ok(confirmedModel.dispatchSummary.includes('Night Shift Dispatch #3'));
+    assert.ok(confirmedModel.dispatchSummary.includes('Sector 03: Cyber Docks'));
+    assert.ok(confirmedModel.dispatchSummary.includes('15 / 18 (Par)'));
+    assert.ok(confirmedModel.dispatchSummary.includes('4 days'));
+
+    const rejectedModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 4,
+      confirmationStatus: 'rejected',
+    });
+    assert.strictEqual(rejectedModel.showShareButton, false);
+    assert.strictEqual(rejectedModel.dispatchSummary, '', 'Rejected runs should have empty dispatchSummary');
+
+    const pendingModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 4,
+      confirmationStatus: 'pending',
+    });
+    assert.strictEqual(pendingModel.showShareButton, false);
+    assert.strictEqual(pendingModel.dispatchSummary, '', 'Pending runs should have empty dispatchSummary');
+  });
+
+  void it('Phase 1: canCopyDispatch is a boolean and false when sharing is disabled', () => {
+    const pendingModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+      confirmationStatus: 'pending',
+    });
+    assert.strictEqual(pendingModel.canCopyDispatch, false);
+
+    const rejectedModel = getEndCardViewModel({
+      won: true,
+      stars: 3,
+      streak: 1,
+      confirmationStatus: 'rejected',
+    });
+    assert.strictEqual(rejectedModel.canCopyDispatch, false);
+  });
+
+  void it('Phase 1: isClipboardSupported returns a boolean and does not throw in test environment', () => {
+    const supported = isClipboardSupported();
+    assert.strictEqual(typeof supported, 'boolean');
+  });
+
+  void it('Phase 1: copyTextToClipboard returns false safely in environment without navigator.clipboard', async () => {
+    const res = await copyTextToClipboard('Test dispatch');
+    assert.strictEqual(typeof res, 'boolean');
+    assert.strictEqual(res, false);
   });
 });
